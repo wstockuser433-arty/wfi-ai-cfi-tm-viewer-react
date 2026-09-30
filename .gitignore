@@ -1,0 +1,195 @@
+# ──────────────────────────────────────────────────────────────
+# WFI-AI-CFI TM Viewer — gitignore
+# ──────────────────────────────────────────────────────────────
+
+# ─── Python ───────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+.pytest_cache/
+pytestdebug.log
+htmlcov/
+cover/
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*.env.local
+*.env.*.local
+site/
+.ipynb_checkpoints
+
+# ─── Node / Vite ──────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+.pnp.*
+.yarn/
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.npm
+.eslintcache
+.parcel-cache
+.vite/
+vite.config.ts.timestamp-*
+dist/
+dist-ssr/
+build/
+*.local
+out/
+.cache/
+
+# ─── Env files ────────────────────────────────────────────────
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+backend/.env
+frontend/.env
+!.env.example
+!**/.env.example
+!*.env.sample
+
+# ─── Docker ───────────────────────────────────────────────────
+# We commit docker-compose.yml; runtime overrides stay local
+docker-compose.override.yml
+docker-compose.*.local.yml
+*.pid
+
+# ─── Databases / runtime data ─────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+*.sql.gz
+*.dump
+*.bin
+pgdata/
+redisdata/
+data/
+tmp/
+temp/
+
+# ─── Logs ─────────────────────────────────────────────────────
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+uvicorn.log
+celerybeat-schedule
+*.log.*
+
+# ─── Test output ──────────────────────────────────────────────
+coverage/
+.nyc_output/
+*.lcov
+test-results/
+playwright-report/
+cypress/videos/
+cypress/screenshots/
+
+# ─── Build artifacts ──────────────────────────────────────────
+*.tsbuildinfo
+.metadata/
+.storybook-out/
+storybook-static/
+
+# ─── IDE / Editor ─────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+!.vscode/launch.json.example
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+.history/
+*.code-workspace
+
+# ─── OS ───────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+*.stackdump
+
+# ─── Misc ─────────────────────────────────────────────────────
+*.bak
+*.orig
+*.rej
+*.tmp
+*.temp
+.cache/
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+dmypy.json
+.python-version
+
+# ─── Repo-specific ────────────────────────────────────────────
+# Local dump files used for TM ingestion testing
+backend/dumps/
+backend/*.bin
+backend/*.dump
+
+# Generated Jupyter / analysis notebooks
+analysis/*.ipynb
+!analysis/*.example.ipynb
+
+# Compiled Python from pyinstaller / nuitka
+*.spec
+build/
+dist/

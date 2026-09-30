@@ -1,0 +1,77 @@
+links:
+  - id: CAM_CDPM_P
+    label: "Camera <-> CDPM (P)"
+    apid: 0x200
+    fields:
+      - { name: link_state,      offset: 0,  type: u8,  unit: "-", enum: {0: "DOWN", 1: "UP", 2: "DEGRADED"} }
+      - { name: crc_err_count,   offset: 1,  type: u32, unit: "cnt" }
+      - { name: frame_err_count, offset: 5,  type: u32, unit: "cnt" }
+      - { name: rx_rate_kbps,    offset: 9,  type: f32, unit: "kbps" }
+      - { name: tx_rate_kbps,    offset: 13, type: f32, unit: "kbps" }
+      - { name: latency_us,      offset: 17, type: f32, unit: "us" }
+
+  - id: CAM_CDPM_R
+    label: "Camera <-> CDPM (R)"
+    apid: 0x201
+    fields:
+      - { name: link_state,      offset: 0,  type: u8,  unit: "-", enum: {0: "DOWN", 1: "UP", 2: "DEGRADED"} }
+      - { name: crc_err_count,   offset: 1,  type: u32, unit: "cnt" }
+      - { name: frame_err_count, offset: 5,  type: u32, unit: "cnt" }
+      - { name: rx_rate_kbps,    offset: 9,  type: f32, unit: "kbps" }
+      - { name: tx_rate_kbps,    offset: 13, type: f32, unit: "kbps" }
+      - { name: latency_us,      offset: 17, type: f32, unit: "us" }
+
+  - id: CDPM_P_CTPU_P
+    label: "CDPM (P) <-> CTPU (P)"
+    apid: 0x202
+    fields:
+      - { name: link_state,      offset: 0,  type: u8,  unit: "-", enum: {0: "DOWN", 1: "UP", 2: "DEGRADED"} }
+      - { name: crc_err_count,   offset: 1,  type: u32, unit: "cnt" }
+      - { name: frame_err_count, offset: 5,  type: u32, unit: "cnt" }
+      - { name: rx_rate_kbps,    offset: 9,  type: f32, unit: "kbps" }
+      - { name: tx_rate_kbps,    offset: 13, type: f32, unit: "kbps" }
+      - { name: latency_us,      offset: 17, type: f32, unit: "us" }
+
+  - id: CDPM_R_CTPU_R
+    label: "CDPM (R) <-> CTPU (R)"
+    apid: 0x203
+    fields:
+      - { name: link_state,      offset: 0,  type: u8,  unit: "-", enum: {0: "DOWN", 1: "UP", 2: "DEGRADED"} }
+      - { name: crc_err_count,   offset: 1,  type: u32, unit: "cnt" }
+      - { name: frame_err_count, offset: 5,  type: u32, unit: "cnt" }
+      - { name: rx_rate_kbps,    offset: 9,  type: f32, unit: "kbps" }
+      - { name: tx_rate_kbps,    offset: 13, type: f32, unit: "kbps" }
+      - { name: latency_us,      offset: 17, type: f32, unit: "us" }
+
+  - id: CTPU_P_SC
+    label: "CTPU (P) <-> Spacecraft"
+    apid: 0x204
+    fields:
+      - { name: link_state,      offset: 0,  type: u8,  unit: "-", enum: {0: "DOWN", 1: "UP", 2: "DEGRADED"} }
+      - { name: crc_err_count,   offset: 1,  type: u32, unit: "cnt" }
+      - { name: frame_err_count, offset: 5,  type: u32, unit: "cnt" }
+      - { name: rx_rate_kbps,    offset: 9,  type: f32, unit: "kbps" }
+      - { name: tx_rate_kbps,    offset: 13, type: f32, unit: "kbps" }
+      - { name: latency_us,      offset: 17, type: f32, unit: "us" }
+
+  - id: CTPU_R_SC
+    label: "CTPU (R) <-> Spacecraft"
+    apid: 0x205
+    fields:
+      - { name: link_state,      offset: 0,  type: u8,  unit: "-", enum: {0: "DOWN", 1: "UP", 2: "DEGRADED"} }
+      - { name: crc_err_count,   offset: 1,  type: u32, unit: "cnt" }
+      - { name: frame_err_count, offset: 5,  type: u32, unit: "cnt" }
+      - { name: rx_rate_kbps,    offset: 9,  type: f32, unit: "kbps" }
+      - { name: tx_rate_kbps,    offset: 13, type: f32, unit: "kbps" }
+      - { name: latency_us,      offset: 17, type: f32, unit: "us" }
+
+  - id: CDPM_CROSSSTRAP
+    label: "CDPM (P) <-> CDPM (R)"
+    apid: 0x206
+    fields:
+      - { name: link_state,      offset: 0,  type: u8,  unit: "-", enum: {0: "DOWN", 1: "UP", 2: "DEGRADED"} }
+      - { name: crc_err_count,   offset: 1,  type: u32, unit: "cnt" }
+      - { name: frame_err_count, offset: 5,  type: u32, unit: "cnt" }
+      - { name: rx_rate_kbps,    offset: 9,  type: f32, unit: "kbps" }
+      - { name: tx_rate_kbps,    offset: 13, type: f32, unit: "kbps" }
+      - { name: latency_us,      offset: 17, type: f32, unit: "us" }

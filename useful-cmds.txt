@@ -1,0 +1,9 @@
+# Find if any file in src frontend is empty?
+find src -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.css" \) -empty
+
+#Verify frontend fixes
+cd frontend
+npx tsc --noEmit
+
+# run frontend
+npm run dev

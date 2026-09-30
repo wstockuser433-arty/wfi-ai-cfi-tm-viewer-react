@@ -1,0 +1,199 @@
+# ============================================================
+# WFI-AI-CFI TM Dictionary
+# Every field is a mapping: { name, offset, type, unit, limits… }
+# Valid types: f32 f64 u8 u16 u32 i8 i16 i32
+# Offsets are byte offsets into the CCSDS payload (after 7-byte header).
+# ============================================================
+
+subsystems:
+  # ============================================================
+  CAMERA:
+    label: "Camera Subsystem"
+    color: "#00E5FF"
+    cards:
+      CAM_ELEC:
+        label: "Camera Electronics Card"
+        apid: 0x100
+        hw_class: HW
+        fields:
+          - { name: cam_fpa_temp,      offset: 0,  type: f32, unit: "C", ltl: -40, lth: -5, htl: 15, hth: 20 }
+          - { name: cam_ccd_temp,      offset: 4,  type: f32, unit: "C", ltl: -30, lth: -10, htl: 25, hth: 30 }
+          - { name: cam_ccd_bias_v,    offset: 8,  type: f32, unit: "V", ltl: 4.5, htl: 5.5 }
+          - { name: cam_clock_locked,  offset: 12, type: u8,  unit: "-", enum: {0: "UNLOCKED", 1: "LOCKED"} }
+          - { name: cam_exposure_time, offset: 13, type: f32, unit: "ms", ltl: 0.1, htl: 5000 }
+          - { name: cam_frame_counter, offset: 17, type: u32, unit: "cnt" }
+          - { name: cam_data_rate,     offset: 21, type: f32, unit: "Mbps", ltl: 0, htl: 800 }
+          - { name: cam_cec_current,   offset: 25, type: f32, unit: "A", ltl: 0, htl: 3.5 }
+          - { name: cam_cec_voltage,   offset: 29, type: f32, unit: "V", ltl: 27.5, htl: 28.5 }
+          - { name: cam_cec_temp,      offset: 33, type: f32, unit: "C", ltl: -20, htl: 60 }
+          - { name: cam_lvds_locked,   offset: 37, type: u8,  unit: "-", enum: {0: "DOWN", 1: "UP"} }
+
+  # ============================================================
+  CDPM_P:
+    label: "CDPM (Primary)"
+    color: "#22C55E"
+    cards:
+      CDPM_P_FPGA:
+        label: "FPGA Processing Card"
+        apid: 0x110
+        hw_class: HW
+        fields:
+          - { name: fpga_die_temp,              offset: 0,  type: f32, unit: "C", ltl: -20, lth: 0, htl: 75, hth: 85 }
+          - { name: fpga_core_voltage,          offset: 4,  type: f32, unit: "V", ltl: 0.95, htl: 1.05 }
+          - { name: fpga_aux_voltage,           offset: 8,  type: f32, unit: "V", ltl: 1.75, htl: 1.85 }
+          - { name: fpga_io_voltage,            offset: 12, type: f32, unit: "V", ltl: 3.2, htl: 3.4 }
+          - { name: fpga_current,               offset: 16, type: f32, unit: "A", ltl: 0, htl: 5 }
+          - { name: fpga_ddr_used_mb,           offset: 20, type: u32, unit: "MB", ltl: 0, htl: 4096 }
+          - { name: fpga_frame_fifo_ovf,        offset: 24, type: u32, unit: "cnt" }
+          - { name: fpga_processing_latency_ms, offset: 28, type: f32, unit: "ms", ltl: 0, htl: 500 }
+          - { name: fpga_watchdog_reset_count,  offset: 32, type: u32, unit: "cnt" }
+
+      CDPM_P_AI:
+        label: "AI Board"
+        apid: 0x111
+        hw_class: HW
+        fields:
+          - { name: ai_soc_temp,             offset: 0,  type: f32, unit: "C", ltl: -20, lth: 0, htl: 85, hth: 95 }
+          - { name: ai_soc_power_w,          offset: 4,  type: f32, unit: "W", ltl: 0, htl: 40 }
+          - { name: ai_core_util_pct,        offset: 8,  type: f32, unit: "%", ltl: 0, htl: 100 }
+          - { name: ai_mem_util_pct,         offset: 12, type: f32, unit: "%", ltl: 0, htl: 100 }
+          - { name: ai_inference_latency_ms, offset: 16, type: f32, unit: "ms", ltl: 0, htl: 200 }
+          - { name: ai_frames_processed,     offset: 20, type: u32, unit: "cnt" }
+          - { name: ai_detections_count,     offset: 24, type: u32, unit: "cnt" }
+          - { name: ai_model_id,             offset: 28, type: u16, unit: "-" }
+          - { name: ai_health_status,        offset: 30, type: u8,  unit: "-", enum: {0: "OK", 1: "WARN", 2: "FAULT"} }
+
+      CDPM_P_THCC:
+        label: "Thermal Control Card"
+        apid: 0x112
+        hw_class: HW
+        fields:
+          - { name: thcc_heater_pwm_pct,     offset: 0,  type: f32, unit: "%", ltl: 0, htl: 100 }
+          - { name: thcc_heater_current,     offset: 4,  type: f32, unit: "A", ltl: 0, htl: 4 }
+          - { name: thcc_cam_plate_temp,     offset: 8,  type: f32, unit: "C", ltl: -30, htl: 40 }
+          - { name: thcc_cdpm_plate_temp,    offset: 12, type: f32, unit: "C", ltl: -20, htl: 60 }
+          - { name: thcc_setpoint,           offset: 16, type: f32, unit: "C", ltl: -20, htl: 30 }
+          - { name: thcc_control_loop_state, offset: 20, type: u8,  unit: "-", enum: {0: "OFF", 1: "ON", 2: "FAULT"} }
+          - { name: thcc_thermistor_ok,      offset: 21, type: u8,  unit: "-" }
+
+  # ============================================================
+  CDPM_R:
+    label: "CDPM (Redundant)"
+    color: "#16A34A"
+    cards:
+      CDPM_R_FPGA:
+        label: "FPGA Processing Card"
+        apid: 0x120
+        hw_class: HW
+        fields:
+          - { name: fpga_die_temp,              offset: 0,  type: f32, unit: "C", ltl: -20, lth: 0, htl: 75, hth: 85 }
+          - { name: fpga_core_voltage,          offset: 4,  type: f32, unit: "V", ltl: 0.95, htl: 1.05 }
+          - { name: fpga_aux_voltage,           offset: 8,  type: f32, unit: "V", ltl: 1.75, htl: 1.85 }
+          - { name: fpga_io_voltage,            offset: 12, type: f32, unit: "V", ltl: 3.2, htl: 3.4 }
+          - { name: fpga_current,               offset: 16, type: f32, unit: "A", ltl: 0, htl: 5 }
+          - { name: fpga_ddr_used_mb,           offset: 20, type: u32, unit: "MB", ltl: 0, htl: 4096 }
+          - { name: fpga_frame_fifo_ovf,        offset: 24, type: u32, unit: "cnt" }
+          - { name: fpga_processing_latency_ms, offset: 28, type: f32, unit: "ms", ltl: 0, htl: 500 }
+          - { name: fpga_watchdog_reset_count,  offset: 32, type: u32, unit: "cnt" }
+
+      CDPM_R_AI:
+        label: "AI Board"
+        apid: 0x121
+        hw_class: HW
+        fields:
+          - { name: ai_soc_temp,             offset: 0,  type: f32, unit: "C", ltl: -20, lth: 0, htl: 85, hth: 95 }
+          - { name: ai_soc_power_w,          offset: 4,  type: f32, unit: "W", ltl: 0, htl: 40 }
+          - { name: ai_core_util_pct,        offset: 8,  type: f32, unit: "%", ltl: 0, htl: 100 }
+          - { name: ai_mem_util_pct,         offset: 12, type: f32, unit: "%", ltl: 0, htl: 100 }
+          - { name: ai_inference_latency_ms, offset: 16, type: f32, unit: "ms", ltl: 0, htl: 200 }
+          - { name: ai_frames_processed,     offset: 20, type: u32, unit: "cnt" }
+          - { name: ai_detections_count,     offset: 24, type: u32, unit: "cnt" }
+          - { name: ai_model_id,             offset: 28, type: u16, unit: "-" }
+          - { name: ai_health_status,        offset: 30, type: u8,  unit: "-", enum: {0: "OK", 1: "WARN", 2: "FAULT"} }
+
+  # ============================================================
+  CTPU_P:
+    label: "CTPU (Primary)"
+    color: "#FFB020"
+    cards:
+      CTPU_P_PWR:
+        label: "Power Card"
+        apid: 0x130
+        hw_class: HW
+        fields:
+          - { name: pwr_bus_42v_in_v,      offset: 0,  type: f32, unit: "V", ltl: 40, htl: 44 }
+          - { name: pwr_bus_42v_in_i,      offset: 4,  type: f32, unit: "A", ltl: 0, htl: 15 }
+          - { name: pwr_out_42v_cam_v,     offset: 8,  type: f32, unit: "V", ltl: 40, htl: 44 }
+          - { name: pwr_out_42v_cam_i,     offset: 12, type: f32, unit: "A", ltl: 0, htl: 10 }
+          - { name: pwr_out_28v_bus_v,     offset: 16, type: f32, unit: "V", ltl: 26, htl: 30 }
+          - { name: pwr_out_28v_bus_i,     offset: 20, type: f32, unit: "A", ltl: 0, htl: 8 }
+          - { name: pwr_uv_ov_status,      offset: 24, type: u8,  unit: "-" }
+          - { name: pwr_overcurrent_fault, offset: 25, type: u8,  unit: "-", enum: {0: "NOMINAL", 1: "FAULT"} }
+          - { name: pwr_efuse_state,       offset: 26, type: u8,  unit: "-", enum: {0: "OFF", 1: "ON", 2: "TRIP"} }
+          - { name: pwr_temp_pcb,          offset: 27, type: f32, unit: "C", ltl: -20, htl: 85 }
+
+      CTPU_P_PPC:
+        label: "Power Processing Card"
+        apid: 0x131
+        hw_class: HW
+        fields:
+          - { name: ppc_primary_bus_v,   offset: 0,  type: f32, unit: "V", ltl: 27.5, htl: 28.5 }
+          - { name: ppc_primary_bus_i,   offset: 4,  type: f32, unit: "A", ltl: 0, htl: 6 }
+          - { name: ppc_secondary_bus_v, offset: 8,  type: f32, unit: "V", ltl: 4.8, htl: 5.2 }
+          - { name: ppc_dcdc_temp,       offset: 12, type: f32, unit: "C", ltl: -20, htl: 100 }
+          - { name: ppc_efficiency_pct,  offset: 16, type: f32, unit: "%", ltl: 70, htl: 95 }
+          - { name: ppc_switch_freq_khz, offset: 20, type: f32, unit: "kHz", ltl: 480, htl: 520 }
+          - { name: ppc_fault_flags,     offset: 24, type: u16, unit: "-" }
+          - { name: ppc_uptime_s,        offset: 26, type: u32, unit: "s" }
+
+  # ============================================================
+  CTPU_R:
+    label: "CTPU (Redundant)"
+    color: "#F59E0B"
+    cards:
+      CTPU_R_PWR:
+        label: "Power Card"
+        apid: 0x140
+        hw_class: HW
+        fields:
+          - { name: pwr_bus_42v_in_v,      offset: 0,  type: f32, unit: "V", ltl: 40, htl: 44 }
+          - { name: pwr_bus_42v_in_i,      offset: 4,  type: f32, unit: "A", ltl: 0, htl: 15 }
+          - { name: pwr_out_42v_cam_v,     offset: 8,  type: f32, unit: "V", ltl: 40, htl: 44 }
+          - { name: pwr_out_42v_cam_i,     offset: 12, type: f32, unit: "A", ltl: 0, htl: 10 }
+          - { name: pwr_out_28v_bus_v,     offset: 16, type: f32, unit: "V", ltl: 26, htl: 30 }
+          - { name: pwr_out_28v_bus_i,     offset: 20, type: f32, unit: "A", ltl: 0, htl: 8 }
+          - { name: pwr_uv_ov_status,      offset: 24, type: u8,  unit: "-" }
+          - { name: pwr_overcurrent_fault, offset: 25, type: u8,  unit: "-", enum: {0: "NOMINAL", 1: "FAULT"} }
+          - { name: pwr_efuse_state,       offset: 26, type: u8,  unit: "-", enum: {0: "OFF", 1: "ON", 2: "TRIP"} }
+          - { name: pwr_temp_pcb,          offset: 27, type: f32, unit: "C", ltl: -20, htl: 85 }
+
+      CTPU_R_PPC:
+        label: "Power Processing Card"
+        apid: 0x141
+        hw_class: HW
+        fields:
+          - { name: ppc_primary_bus_v,   offset: 0,  type: f32, unit: "V", ltl: 27.5, htl: 28.5 }
+          - { name: ppc_primary_bus_i,   offset: 4,  type: f32, unit: "A", ltl: 0, htl: 6 }
+          - { name: ppc_secondary_bus_v, offset: 8,  type: f32, unit: "V", ltl: 4.8, htl: 5.2 }
+          - { name: ppc_dcdc_temp,       offset: 12, type: f32, unit: "C", ltl: -20, htl: 100 }
+          - { name: ppc_efficiency_pct,  offset: 16, type: f32, unit: "%", ltl: 70, htl: 95 }
+          - { name: ppc_switch_freq_khz, offset: 20, type: f32, unit: "kHz", ltl: 480, htl: 520 }
+          - { name: ppc_fault_flags,     offset: 24, type: u16, unit: "-" }
+          - { name: ppc_uptime_s,        offset: 26, type: u32, unit: "s" }
+
+  # ============================================================
+  UNIT:
+    label: "Unit / Mode"
+    color: "#8B95A9"
+    cards:
+      UNIT_HK:
+        label: "Unit Housekeeping"
+        apid: 0x150
+        hw_class: SW
+        fields:
+          - { name: unit_mode,          offset: 0,  type: u8,  unit: "-", enum: {0: "SAFE", 1: "IDLE", 2: "IMAGING", 3: "CALIB", 4: "FAULT"} }
+          - { name: unit_uptime_s,      offset: 1,  type: u32, unit: "s" }
+          - { name: unit_active_cdpm,   offset: 5,  type: u8,  unit: "-", enum: {0: "PRIMARY", 1: "REDUNDANT"} }
+          - { name: unit_active_ctpu,   offset: 6,  type: u8,  unit: "-", enum: {0: "PRIMARY", 1: "REDUNDANT"} }
+          - { name: unit_obc_time_corr, offset: 7,  type: f64, unit: "s" }
+          - { name: unit_last_tc_seq,   offset: 15, type: u16, unit: "-" }
