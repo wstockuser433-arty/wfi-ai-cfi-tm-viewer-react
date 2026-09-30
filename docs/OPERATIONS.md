@@ -63,6 +63,53 @@ wfi-ai-cfi-tm-viewer/
 └── docker-compose.yml
 ```
 
+## 🧭 Container Name Convention
+
+This document uses the short names `tm-postgres` and `tm-redis` for readability. On this system:
+
+| Document name | Actual container name |
+|---|---|
+| `tm-postgres` | `wfi-ai-cfi-tm-viewer-react-postgres-1` |
+| `tm-redis`    | `wfi-ai-cfi-tm-viewer-react-redis-1` |
+
+**Recommended shell aliases** (add to `~/.bashrc`):
+
+```bash
+alias pg='docker exec -it "$(docker ps --filter publish=5432 --format "{{.Names}}")" psql -U tm -d tmdb'
+alias pgq='docker exec -t "$(docker ps --filter publish=5432 --format "{{.Names}}")" psql -U tm -d tmdb -c'
+alias redis='docker exec -it "$(docker ps --filter publish=6379 --format "{{.Names}}")" redis-cli'
+```
+Other shortcuts
+```bash
+# ─── WFI-AI-CFI TM Viewer — DB shortcuts ─────────────────────
+export PG_CONTAINER=wfi-ai-cfi-tm-viewer-react-postgres-1
+export REDIS_CONTAINER=wfi-ai-cfi-tm-viewer-react-redis-1
+
+alias pg='docker exec -it $PG_CONTAINER psql -U tm -d tmdb'
+alias pgq='docker exec -t $PG_CONTAINER psql -U tm -d tmdb -c'
+alias redis='docker exec -it $REDIS_CONTAINER redis-cli'
+```
+Reload
+```bash
+source ~/.bashrc
+```
+Now you can run (which is much nicer):
+```bash
+# Interactive Postgres shell
+pg
+
+# One-shot Postgres query
+pgq "SELECT count(*) FROM packets;"
+pgq "SELECT pg_size_pretty(pg_database_size('tmdb'));"
+pgq "SELECT apid, count(*) FROM packets GROUP BY apid ORDER BY count(*) DESC LIMIT 5;"
+
+# Redis commands
+redis XLEN tm.live
+redis INFO memory | grep used_memory_human
+redis XREVRANGE tm.live + - COUNT 5
+```
+
+
 ---
 
 ## ✅ Preflight Checks
