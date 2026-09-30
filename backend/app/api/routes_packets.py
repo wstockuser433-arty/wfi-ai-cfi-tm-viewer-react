@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from ..db.postgres import get_db
 from ..db.models.packet import PacketRow
 
@@ -19,6 +20,7 @@ async def list_packets(
         stmt = stmt.where(PacketRow.apid == apid)
     if subsystem:
         stmt = stmt.where(PacketRow.subsystem == subsystem)
+
     rows = (await db.execute(stmt)).scalars().all()
     return {
         "packets": [
@@ -28,6 +30,7 @@ async def list_packets(
                 "apid": r.apid,
                 "subsystem": r.subsystem,
                 "card": r.card,
+                "seq": r.seq,
                 "crc_ok": r.crc_ok,
                 "raw_hex": r.raw_hex,
             }

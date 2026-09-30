@@ -21,12 +21,10 @@ export function SpeedControl({ speed, setSpeed, playing, onPlay, onPause }: Prop
       <select
         value={speed}
         onChange={(e) => setSpeed(Number(e.target.value))}
-        className="bg-white/5 border border-white/10 rounded px-2 py-1 mono text-[11px]"
+        className="select-dark"
       >
         {SPEEDS.map((s) => (
-          <option key={s} value={s}>
-            {s}×
-          </option>
+          <option key={s} value={s}>{s}×</option>
         ))}
       </select>
     </div>

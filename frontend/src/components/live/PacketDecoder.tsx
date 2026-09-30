@@ -1,21 +1,36 @@
 import { useMemo, useState, useEffect } from "react";
 import { useTelemetry } from "@/store/telemetryStore";
+import { useFilters } from "@/store/filterStore";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { formatHex, cn } from "@/lib/utils";
+import { formatHex } from "@/lib/utils";
 
 export function PacketDecoder() {
-  const meta = useTelemetry(s => s.meta);
-  const packets = useTelemetry(s => s.packets);
+  const meta = useTelemetry((s) => s.meta);
+  const packets = useTelemetry((s) => s.packets);
+  const subsystems = useFilters((s) => s.subsystems);
   const [selectedApid, setSelectedApid] = useState<number | null>(null);
 
-  // Auto-select first APID once meta is loaded
+  // APIDs filtered by the sidebar selection (if any)
+  const availableApids = useMemo(() => {
+    if (!meta) return [];
+    if (subsystems.size === 0) return meta.apids;
+    return meta.apids.filter((a) => subsystems.has(a.subsystem));
+  }, [meta, subsystems]);
+
+  // Keep selection valid when the filter changes
   useEffect(() => {
-    if (meta && selectedApid === null) {
-      const first = meta.apids[0]?.apid;
-      if (first != null) setSelectedApid(first);
+    if (availableApids.length === 0) {
+      setSelectedApid(null);
+      return;
     }
-  }, [meta, selectedApid]);
+    if (
+      selectedApid === null ||
+      !availableApids.some((a) => a.apid === selectedApid)
+    ) {
+      setSelectedApid(availableApids[0].apid);
+    }
+  }, [availableApids, selectedApid]);
 
   const latest = useMemo(() => {
     if (selectedApid === null) return null;
@@ -28,7 +43,7 @@ export function PacketDecoder() {
   const hexLines = useMemo(() => {
     if (!latest) return [];
     const bytes = new Uint8Array(
-      latest.raw_hex.match(/.{2}/g)!.map(h => parseInt(h, 16))
+      latest.raw_hex.match(/.{2}/g)!.map((h) => parseInt(h, 16))
     );
     return formatHex(bytes);
   }, [latest]);
@@ -38,17 +53,28 @@ export function PacketDecoder() {
   return (
     <Card className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold">Packet Decoder</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold">Packet Decoder</h3>
+          {subsystems.size > 0 && (
+            <Badge variant="cyan">
+              filtered · {subsystems.size} subsystem{subsystems.size > 1 ? "s" : ""}
+            </Badge>
+          )}
+        </div>
         <select
           value={selectedApid ?? ""}
-          onChange={e => setSelectedApid(Number(e.target.value))}
-          className="bg-white/5 border border-white/10 rounded-md text-[11px] mono px-2 py-1 focus:outline-none focus:border-accent-cyan/40"
+          onChange={(e) => setSelectedApid(Number(e.target.value))}
+          className="select-dark max-w-xs"
         >
-          {meta.apids.map(a => (
-            <option key={a.apid} value={a.apid}>
-              0x{a.apid.toString(16).toUpperCase()} · {a.subsystem}/{a.card}
-            </option>
-          ))}
+          {availableApids.length === 0 ? (
+            <option value="">no APIDs match filter</option>
+          ) : (
+            availableApids.map((a) => (
+              <option key={a.apid} value={a.apid}>
+                0x{a.apid.toString(16).toUpperCase()} · {a.subsystem}/{a.card}
+              </option>
+            ))
+          )}
         </select>
       </div>
 

@@ -1,6 +1,7 @@
 import { PacketDecoder } from "@/components/live/PacketDecoder";
 import { Card } from "@/components/ui/card";
 import { UploadDumpButton } from "@/components/inspector/UploadDumpButton";
+import { FilterBar } from "@/components/inspector/FilterBar";
 
 export function InspectorPage() {
   return (
@@ -13,6 +14,7 @@ export function InspectorPage() {
           </div>
         </div>
         <UploadDumpButton />
+        <FilterBar />
       </Card>
       <PacketDecoder />
     </div>

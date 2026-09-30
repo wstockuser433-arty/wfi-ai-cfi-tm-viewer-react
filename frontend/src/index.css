@@ -61,3 +61,40 @@ body {
 .mono {
   font-family: "JetBrains Mono", ui-monospace, monospace;
 }
+
+/* ─── Native select / option dark theme ──────────────────────── */
+/* The closed <select> is fully styleable, but the popup <option> */
+/* list is drawn by the OS. These rules cover the common cases on */
+/* Chrome/Edge (Windows/Linux) and Firefox; macOS Safari ignores   */
+/* most option styling and shows a native popup instead.           */
+
+select {
+  color-scheme: dark;                       /* tells the OS to use dark UI */
+}
+
+select,
+select:focus,
+select:hover {
+  background-color: #141925;                 /* space-800 */
+  color: #E6EDF7;
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+select option,
+select optgroup {
+  background-color: #141925;
+  color: #E6EDF7;
+}
+
+/* Firefox honours this directly */
+@-moz-document url-prefix() {
+  select option {
+    background-color: #141925;
+    color: #E6EDF7;
+  }
+}
+
+/* WebKit/Blink — leave the caret & padding intact */
+select::-ms-expand {
+  display: none;
+}

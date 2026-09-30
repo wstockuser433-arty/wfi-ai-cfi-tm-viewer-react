@@ -125,8 +125,8 @@ export function StoragePage() {
                     <td className="py-1.5 px-2">{p.subsystem}</td>
                     <td className="py-1.5 px-2 text-muted">{p.card}</td>
                     <td className="py-1.5 px-2 text-right">
-                      <Badge variant={p.crc_ok ? "ok" : "crit"}>
-                        {p.crc_ok ? "OK" : "FAIL"}
+                      <Badge variant={p.crc_ok === true ? "ok" : "crit"}>
+                        {p.crc_ok === true ? "OK" : "FAIL"}
                       </Badge>
                     </td>
                   </tr>
