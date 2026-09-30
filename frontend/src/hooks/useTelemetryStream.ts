@@ -2,12 +2,6 @@ import { useEffect, useRef } from "react";
 import { WS_URL, type DecodedPacket } from "@/lib/api";
 import { useTelemetry } from "@/store/telemetryStore";
 
-/**
- * Subscribes to the backend TM WebSocket and pushes decoded packets
- * into the Zustand store.
- *
- * Auto-reconnects with a small backoff if the backend goes down.
- */
 export function useTelemetryStream(): void {
   const ingest = useTelemetry((s) => s.ingest);
   const setLink = useTelemetry((s) => s.setLink);
@@ -28,7 +22,12 @@ export function useTelemetryStream(): void {
       wsRef.current = ws;
 
       ws.onopen = () => {
-        if (!aliveRef.current) return;
+        if (!aliveRef.current) {
+          // Component unmounted during handshake — close cleanly now
+          // that the socket is OPEN (safe to close).
+          try { ws.close(); } catch { /* ignore */ }
+          return;
+        }
         retryRef.current = 0;
         setLink("connected");
       };
@@ -48,14 +47,13 @@ export function useTelemetryStream(): void {
       };
 
       ws.onerror = () => {
-        // onclose will fire next; nothing to do here
+        /* onclose will fire next; nothing to do here */
       };
 
       ws.onclose = () => {
         if (!aliveRef.current) return;
         setLink("disconnected");
 
-        // Exponential backoff capped at 5 s
         const delay = Math.min(500 * 2 ** retryRef.current, 5000);
         retryRef.current += 1;
         timerRef.current = window.setTimeout(connect, delay);
@@ -66,11 +64,25 @@ export function useTelemetryStream(): void {
 
     return () => {
       aliveRef.current = false;
+
       if (timerRef.current !== null) {
         window.clearTimeout(timerRef.current);
         timerRef.current = null;
       }
-      wsRef.current?.close();
+
+      // ⚠️ Only close if the socket is in a closable state.
+      //   CONNECTING (0) → safe to close (browser aborts the handshake)
+      //   OPEN (1)       → safe to close
+      //   CLOSING (2)    → already closing; do nothing
+      //   CLOSED (3)     → already closed; do nothing
+      const ws = wsRef.current;
+      if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
+        try {
+          ws.close();
+        } catch {
+          /* swallow — Strict Mode double-unmount or torn-down socket */
+        }
+      }
       wsRef.current = null;
     };
   }, [ingest, setLink]);

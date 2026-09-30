@@ -1,17 +1,30 @@
+import { useEffect } from "react";
 import { StatusBar } from "./components/layout/StatusBar";
 import { Sidebar } from "./components/layout/Sidebar";
 import { useTelemetryStream } from "./hooks/useTelemetryStream";
 import { useMeta } from "./hooks/useMeta";
-import { KpiCards } from "./components/live/KpiCards";
-import { LiveChart } from "./components/live/LiveChart";
-import { PacketDecoder } from "./components/live/PacketDecoder";
-import { AlarmRail } from "./components/live/AlarmRail";
-import { LinkHealthStrip } from "./components/live/LinkHealthStrip";
+import { useUiStore } from "./store/uiStore";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+
+import { LivePage } from "./pages/LivePage";
+import { AlarmsPage } from "./pages/AlarmsPage";
+import { TrendsPage } from "./pages/TrendsPage";
+import { StoragePage } from "./pages/StoragePage";
+import { InspectorPage } from "./pages/InspectorPage";  // optional
+// import { PlaybackPage } from "./pages/PlaybackPage";    // optional
+// import { LinksPage } from "./pages/LinksPage";          // optional
 
 export default function App() {
   useMeta();
   useTelemetryStream();
+
+  const page = useUiStore((s) => s.activePage);
+  const setPage = useUiStore((s) => s.setPage);
+
+  // Init page on mount
+  useEffect(() => {
+    if (!page) setPage("dashboard");
+  }, [page, setPage]);
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
@@ -24,28 +37,13 @@ export default function App() {
           <Sidebar />
         </ErrorBoundary>
 
-        <main className="flex-1 min-h-0 overflow-auto p-4 space-y-4">
+        <main className="flex-1 min-h-0 overflow-auto p-4">
           <ErrorBoundary>
-            <LinkHealthStrip />
-          </ErrorBoundary>
-
-          <ErrorBoundary>
-            <KpiCards />
-          </ErrorBoundary>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-2">
-              <ErrorBoundary>
-                <LiveChart />
-              </ErrorBoundary>
-            </div>
-            <ErrorBoundary>
-              <AlarmRail />
-            </ErrorBoundary>
-          </div>
-
-          <ErrorBoundary>
-            <PacketDecoder />
+            {page === "dashboard" && <LivePage />}
+            {page === "alarms"    && <AlarmsPage />}
+            {page === "trends"    && <TrendsPage />}
+            {page === "storage"   && <StoragePage />}
+            {page === "inspector" && <InspectorPage />}
           </ErrorBoundary>
         </main>
       </div>

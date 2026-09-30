@@ -2,9 +2,6 @@ import { create } from "zustand";
 import type { DecodedPacket } from "@/types/packet";
 import type { MetaResponse } from "@/types/meta";
 
-// ---------------------------------------------------------------------- //
-// Types
-// ---------------------------------------------------------------------- //
 export type LinkState = "connected" | "connecting" | "disconnected";
 
 export interface Alarm {
@@ -19,25 +16,15 @@ export interface Alarm {
 }
 
 interface TelemetryState {
-  // ---- Live packet buffer (bounded ring) ------------------------------
   packets: DecodedPacket[];
-
-  // ---- Latest-by-index maps for O(1) reads ----------------------------
   latestByApid: Record<number, DecodedPacket>;
-  latestByParam: Record<string, DecodedPacket>; // key: `${apid}:${param}`
-
-  // ---- Alarm buffer ---------------------------------------------------
+  latestByParam: Record<string, DecodedPacket>;
   alarms: Alarm[];
-
-  // ---- Connection / stats --------------------------------------------
   link: LinkState;
   lastPacketAt: number;
   totalReceived: number;
-
-  // ---- TM dictionary (from /api/meta) --------------------------------
   meta: MetaResponse | null;
 
-  // ---- Actions -------------------------------------------------------
   ingest: (batch: DecodedPacket[]) => void;
   setLink: (s: LinkState) => void;
   setMeta: (m: MetaResponse) => void;
@@ -45,15 +32,9 @@ interface TelemetryState {
   reset: () => void;
 }
 
-// ---------------------------------------------------------------------- //
-// Constants
-// ---------------------------------------------------------------------- //
 const MAX_PACKETS = 1000;
 const MAX_ALARMS = 100;
 
-// ---------------------------------------------------------------------- //
-// Store
-// ---------------------------------------------------------------------- //
 export const useTelemetry = create<TelemetryState>((set) => ({
   packets: [],
   latestByApid: {},
@@ -64,34 +45,27 @@ export const useTelemetry = create<TelemetryState>((set) => ({
   totalReceived: 0,
   meta: null,
 
-  // ------------------------------------------------------------------ //
   ingest: (batch) =>
     set((state) => {
-      if (!batch || batch.length === 0) return state;
+      if (!batch || batch.length === 0) {
+        // ⚠️ Return the SAME state object reference — no re-render.
+        return state;
+      }
 
       const latest = { ...state.latestByApid };
       const latestParam = { ...state.latestByParam };
       const newAlarms: Alarm[] = [];
-
-      // Track seen alarm keys in this batch to avoid duplicates within
-      // the same tick (a param that appears twice in one batch)
       const seenKeys = new Set<string>();
 
       for (const p of batch) {
         latest[p.apid] = p;
-
         for (const [name, f] of Object.entries(p.fields ?? {})) {
           latestParam[`${p.apid}:${name}`] = p;
-
           if (f.status !== "OK") {
             const id = `${p.apid}:${name}:${f.status}`;
             if (seenKeys.has(id)) continue;
             seenKeys.add(id);
-
-            // Skip if identical alarm already present (deduplicated)
-            const existing = state.alarms.find((a) => a.id === id);
-            if (existing) continue;
-
+            if (state.alarms.find((a) => a.id === id)) continue;
             newAlarms.push({
               id,
               ts: p.timestamp,
@@ -101,8 +75,7 @@ export const useTelemetry = create<TelemetryState>((set) => ({
               apid: p.apid,
               param: name,
               message:
-                `${p.subsystem}/${p.card}.${name} = ` +
-                `${f.value}${f.unit ?? ""} ` +
+                `${p.subsystem}/${p.card}.${name} = ${f.value}${f.unit ?? ""} ` +
                 `(limits ${f.limits?.[0] ?? "—"}–${f.limits?.[1] ?? "—"})`,
             });
           }
@@ -119,12 +92,11 @@ export const useTelemetry = create<TelemetryState>((set) => ({
       };
     }),
 
-  // ------------------------------------------------------------------ //
-  setLink: (link) => set({ link }),
+  setLink: (link) => set((s) => (s.link === link ? s : { link })),
 
   setMeta: (meta) => set({ meta }),
 
-  clearAlarms: () => set({ alarms: [] }),
+  clearAlarms: () => set((s) => (s.alarms.length === 0 ? s : { alarms: [] })),
 
   reset: () =>
     set({

@@ -1,13 +1,13 @@
 import { create } from "zustand";
 
 export type Page =
-  | "dashboard"
-  | "inspector"
+  | "dashboard"   // Live
   | "trends"
   | "storage"
+  | "alarms"
+  | "inspector"
   | "playback"
-  | "links"
-  | "alarms";
+  | "links";
 
 interface UiState {
   mode: "live" | "playback";
