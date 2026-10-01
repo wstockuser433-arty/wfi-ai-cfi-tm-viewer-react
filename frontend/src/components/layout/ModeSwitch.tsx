@@ -12,7 +12,7 @@ export function ModeSwitch() {
         onClick={() => setMode("live")}
         className={cn(
           "flex items-center gap-1.5 px-3 py-1 text-xs rounded transition-colors",
-          mode === "live" ? "bg-accent-cyan/15 text-accent-cyan" : "text-muted hover:text-white"
+          mode === "live" ? "bg-accent/15 text-accent" : "text-muted hover:text-white"
         )}
       >
         <Radio className="w-3 h-3" /> Live

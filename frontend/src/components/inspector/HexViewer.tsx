@@ -42,7 +42,7 @@ export function HexViewer({
             key={i}
             className={cn(
               "whitespace-pre",
-              isHighlighted ? "bg-accent-cyan/10 text-accent-cyan" : "text-slate-300"
+              isHighlighted ? "bg-accent/10 text-accent" : "text-slate-300"
             )}
           >
             {line}

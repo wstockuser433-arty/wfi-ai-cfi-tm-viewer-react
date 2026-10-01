@@ -9,19 +9,29 @@ import {
   CartesianGrid,
 } from "recharts";
 import { useTelemetry } from "@/store/telemetryStore";
+import { useIsDark } from "@/hooks/useIsDark";
+import { chartTokens } from "@/lib/theme-tokens";
 import type { DecodedPacket } from "@/lib/api";
 
 interface Props {
   selectedKeys: string[]; // ["0x100:cam_fpa_temp", ...]
 }
 
-const PALETTE = [
-  "#00E5FF", "#22C55E", "#FFB020", "#A855F7", "#FF4D5E",
+const PALETTE_DARK = [
+  "#8494DA", "#22C55E", "#FFB020", "#A855F7", "#FF4D5E",
   "#38BDF8", "#F472B6", "#FBBF24", "#34D399", "#818CF8",
+];
+
+const PALETTE_LIGHT = [
+  "#4B5FB4", "#15803D", "#B45309", "#7E22CE", "#BE123C",
+  "#0369A1", "#BE185D", "#A16207", "#047857", "#4338CA",
 ];
 
 export function MultiSeriesChart({ selectedKeys }: Props) {
   const packets = useTelemetry((s) => s.packets);
+  const isDark = useIsDark();
+  const tokens = chartTokens(isDark);
+  const palette = isDark ? PALETTE_DARK : PALETTE_LIGHT;
 
   const { data, series } = useMemo(() => {
     const wanted = new Map<number, { field: string; key: string }>();
@@ -39,7 +49,7 @@ export function MultiSeriesChart({ selectedKeys }: Props) {
       seriesMeta.push({
         key: field,
         label: `${apidHex}.${field}`,
-        color: PALETTE[idx++ % PALETTE.length],
+        color: palette[idx++ % palette.length],
       });
     }
 
@@ -59,13 +69,13 @@ export function MultiSeriesChart({ selectedKeys }: Props) {
       .slice(-180);
 
     return { data: sorted, series: seriesMeta };
-  }, [packets, selectedKeys]);
+  }, [packets, selectedKeys, palette]);
 
   return (
     <div className="h-[400px]">
       <ResponsiveContainer>
         <LineChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
-          <CartesianGrid stroke="#ffffff08" />
+          <CartesianGrid stroke={tokens.grid} strokeDasharray="3 3" />
           <XAxis
             dataKey="t"
             type="number"
@@ -73,17 +83,20 @@ export function MultiSeriesChart({ selectedKeys }: Props) {
             tickFormatter={(v) =>
               new Date((v as number) * 1000).toISOString().substring(17, 23)
             }
-            stroke="#8B95A9"
+            stroke={tokens.axis}
             fontSize={10}
           />
-          <YAxis stroke="#8B95A9" fontSize={10} />
+          <YAxis stroke={tokens.axis} fontSize={10} />
           <Tooltip
             contentStyle={{
-              background: "#141925",
-              border: "1px solid rgba(255,255,255,0.08)",
+              background: tokens.tooltipBg,
+              border: `1px solid ${tokens.tooltipBorder}`,
               borderRadius: 8,
               fontSize: 12,
+              color: tokens.tooltipText,
             }}
+            labelStyle={{ color: tokens.tooltipText }}
+            itemStyle={{ color: tokens.tooltipText }}
             labelFormatter={(v) =>
               new Date((v as number) * 1000).toLocaleTimeString()
             }

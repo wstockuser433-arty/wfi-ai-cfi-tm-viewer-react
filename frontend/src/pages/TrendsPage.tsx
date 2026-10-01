@@ -1,11 +1,14 @@
 import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { useTelemetry } from "@/store/telemetryStore";
+import { useIsDark } from "@/hooks/useIsDark";
+import { subsystemColor } from "@/lib/colors";
 import { MultiSeriesChart } from "@/components/trends/MultiSeriesChart";
 import { TrendSparkTable } from "@/components/trends/TrendSparkTable";
 
 export function TrendsPage() {
   const meta = useTelemetry((s) => s.meta);
+  const isDark = useIsDark();
   const [selected, setSelected] = useState<Set<string>>(
     new Set(["0x100:cam_fpa_temp", "0x111:ai_soc_temp", "0x131:ppc_dcdc_temp"])
   );
@@ -16,17 +19,17 @@ export function TrendsPage() {
     for (const [subKey, sub] of Object.entries(meta.subsystems)) {
       for (const [cardKey, card] of Object.entries(sub.cards)) {
         for (const f of card.fields) {
-          if (f.type === "u8" || f.type === "u16") continue; // skip enums/ints
+          if (f.type === "u8" || f.type === "u16") continue;
           out.push({
             key: `0x${card.apid.toString(16).toUpperCase()}:${f.name}`,
             label: `${subKey}/${cardKey}.${f.name}`,
-            color: sub.color,
+            color: subsystemColor(subKey, isDark),
           });
         }
       }
     }
     return out;
-  }, [meta]);
+  }, [meta, isDark]);
 
   const toggle = (key: string) => {
     const next = new Set(selected);
@@ -38,12 +41,13 @@ export function TrendsPage() {
     <div className="space-y-4">
       <Card>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold">Parameter Selection</h3>
-          <span className="text-[11px] text-muted">
+          <h3 className="text-sm font-semibold text-primary">Parameter Selection</h3>
+          <span className="text-[11px] text-tertiary">
             {selected.size} selected · {availableParams.length} available
           </span>
         </div>
-        <div className="flex flex-wrap gap-1.5 max-h-32 overflow-auto">
+
+        <div className="flex flex-wrap gap-1.5 max-h-40 overflow-auto pr-1">
           {availableParams.map((p) => {
             const active = selected.has(p.key);
             return (
@@ -52,12 +56,12 @@ export function TrendsPage() {
                 onClick={() => toggle(p.key)}
                 className={`text-[11px] px-2 py-1 rounded border transition-colors mono ${
                   active
-                    ? "border-accent-cyan/40 bg-accent-cyan/10 text-accent-cyan"
-                    : "border-white/10 text-muted hover:text-white hover:bg-white/5"
+                    ? "border-accent/40 bg-accent/10 text-accent"
+                    : "border-subtle text-tertiary hover:text-primary hover:bg-white/5"
                 }`}
               >
                 <span
-                  className="inline-block w-1.5 h-1.5 rounded-full mr-1.5"
+                  className="inline-block w-1.5 h-1.5 rounded-full mr-1.5 align-middle"
                   style={{ background: p.color }}
                 />
                 {p.label}

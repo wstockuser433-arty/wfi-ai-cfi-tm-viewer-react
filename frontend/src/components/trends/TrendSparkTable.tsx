@@ -54,7 +54,7 @@ export function TrendSparkTable() {
       <div className="overflow-auto max-h-[400px]">
         <table className="w-full text-xs">
           <thead>
-            <tr className="border-b border-white/5 text-[10px] text-muted uppercase tracking-wider">
+            <tr className="border-b border-subtle text-[10px] text-tertiary uppercase tracking-wider">
               <th className="text-left py-2 px-2">Param</th>
               <th className="text-left py-2 px-2">Subsystem</th>
               <th className="text-left py-2 px-2">Card</th>
@@ -64,10 +64,7 @@ export function TrendSparkTable() {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr
-                key={r.key}
-                className="border-b border-white/5 hover:bg-white/5"
-              >
+              <tr className="border-b border-subtle hover:bg-white/5 transition-colors">
                 <td className="mono py-1.5 px-2">{r.param}</td>
                 <td className="py-1.5 px-2 text-muted">{r.subsystem}</td>
                 <td className="py-1.5 px-2 text-muted">{r.card}</td>

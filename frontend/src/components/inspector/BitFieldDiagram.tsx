@@ -21,7 +21,7 @@ export function BitFieldDiagram({ fields, totalBits }: Props) {
           return (
             <div
               key={f.name}
-              className="flex items-center justify-center text-[10px] mono border-r border-white/10 last:border-r-0 bg-accent-cyan/5"
+              className="flex items-center justify-center text-[10px] mono border-r border-white/10 last:border-r-0 bg-accent/5"
               style={{ width: `${pct}%` }}
               title={`${f.name}: ${f.width} bits @ offset ${f.offset}`}
             >

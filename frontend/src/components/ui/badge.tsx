@@ -7,7 +7,7 @@ const VARIANTS: Record<Variant, string> = {
   ok: "bg-accent-green/10 text-accent-green border-accent-green/30",
   warn: "bg-accent-amber/10 text-accent-amber border-accent-amber/30",
   crit: "bg-accent-red/10 text-accent-red border-accent-red/30",
-  cyan: "bg-accent-cyan/10 text-accent-cyan border-accent-cyan/30",
+  cyan: "bg-accent/10 text-accent border-accent/30",
   muted: "bg-white/5 text-muted border-white/10",
 };
 

@@ -62,7 +62,7 @@ export function StoragePage() {
     <div className="space-y-4">
       <Card>
         <div className="flex items-center gap-2 mb-3">
-          <Database className="w-4 h-4 text-accent-cyan" />
+          <Database className="w-4 h-4 text-accent" />
           <h3 className="text-sm font-semibold">TM Storage Explorer</h3>
         </div>
 
@@ -103,9 +103,9 @@ export function StoragePage() {
             Results <span className="text-muted text-xs">({packets.length} packets)</span>
           </div>
           <div className="overflow-auto max-h-[500px]">
-            <table className="w-full text-xs">
+            <table className="w-full text-xs bg-white/5">
               <thead>
-                <tr className="border-b border-white/5 text-[10px] text-muted uppercase tracking-wider">
+                <tr className="border-b border-subtle text-[10px] text-tertiary uppercase tracking-wider">
                   <th className="text-left py-2 px-2">Time</th>
                   <th className="text-left py-2 px-2">APID</th>
                   <th className="text-left py-2 px-2">Subsystem</th>
@@ -115,18 +115,21 @@ export function StoragePage() {
               </thead>
               <tbody>
                 {packets.slice(0, 500).map((p) => (
-                  <tr key={p.id} className="border-b border-white/5 hover:bg-white/5">
-                    <td className="mono py-1.5 px-2 text-muted">
+                  <tr
+                    key={p.id}
+                    className="border-b border-subtle hover:bg-white/5 transition-colors"
+                  >
+                    <td className="mono py-1.5 px-2 text-secondary">
                       {new Date(p.ts).toLocaleTimeString()}
                     </td>
-                    <td className="mono py-1.5 px-2">
+                    <td className="mono py-1.5 px-2 text-primary">
                       0x{p.apid.toString(16).toUpperCase()}
                     </td>
-                    <td className="py-1.5 px-2">{p.subsystem}</td>
-                    <td className="py-1.5 px-2 text-muted">{p.card}</td>
+                    <td className="py-1.5 px-2 text-primary">{p.subsystem}</td>
+                    <td className="py-1.5 px-2 text-tertiary">{p.card}</td>
                     <td className="py-1.5 px-2 text-right">
-                      <Badge variant={p.crc_ok === true ? "ok" : "crit"}>
-                        {p.crc_ok === true ? "OK" : "FAIL"}
+                      <Badge variant={p.crc_ok ? "ok" : "crit"}>
+                        {p.crc_ok ? "OK" : "FAIL"}
                       </Badge>
                     </td>
                   </tr>

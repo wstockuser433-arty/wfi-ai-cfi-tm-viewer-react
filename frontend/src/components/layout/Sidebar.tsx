@@ -2,7 +2,8 @@ import { Radio, History, Bell, Settings2, Boxes, TrendingUp, Database } from "lu
 import { useTelemetry } from "@/store/telemetryStore";
 import { useFilters } from "@/store/filterStore";
 import { useUiStore, type Page } from "@/store/uiStore";
-import { SUBSYSTEM_COLORS } from "@/lib/colors";
+import { useIsDark } from "@/hooks/useIsDark";
+import { subsystemColor } from "@/lib/colors";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -12,23 +13,24 @@ interface NavItem {
 }
 
 export function Sidebar() {
-  // ─── ALL hooks must be called here, unconditionally ────────────────
+  // ─── ALL hooks at the top, unconditionally ─────────────────────────
   const meta = useTelemetry((s) => s.meta);
   const alarms = useTelemetry((s) => s.alarms);
   const activePage = useUiStore((s) => s.activePage);
   const setPage = useUiStore((s) => s.setPage);
 
-  // Read the whole filter set ONCE. Not a hook inside a loop.
   const subsystems = useFilters((s) => s.subsystems);
   const toggleSubsystem = useFilters((s) => s.toggleSubsystem);
 
+  const isDark = useIsDark();
+
   // ─── Data prep (no hooks below this line) ──────────────────────────
   const nav: NavItem[] = [
-    { id: "dashboard",  label: "Live",      icon: Radio },
-    { id: "trends",     label: "Trends",    icon: TrendingUp },
-    { id: "storage",    label: "Storage",   icon: Database },
-    { id: "alarms",     label: "Alarms",    icon: Bell },
-    { id: "inspector",  label: "Inspector", icon: Settings2 },
+    { id: "dashboard", label: "Live",      icon: Radio },
+    { id: "trends",    label: "Trends",    icon: TrendingUp },
+    { id: "storage",   label: "Storage",   icon: Database },
+    { id: "alarms",    label: "Alarms",    icon: Bell },
+    { id: "inspector", label: "Inspector", icon: Settings2 },
   ];
 
   return (
@@ -45,7 +47,7 @@ export function Sidebar() {
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
                 active
-                  ? "bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/20"
+                  ? "bg-accent/10 text-accent border border-accent/20"
                   : "text-slate-300 hover:bg-white/5"
               )}
             >
@@ -73,9 +75,9 @@ export function Sidebar() {
         ) : (
           <div className="space-y-0.5">
             {Object.entries(meta.subsystems).map(([key, sub]) => {
-              // ✅ just a Set lookup — no hook call
               const active = subsystems.has(key);
-              const color = SUBSYSTEM_COLORS[key] ?? "#8B95A9";
+              // ✅ key is in scope here
+              const color = subsystemColor(key, isDark);
               const cardCount = Object.keys(sub.cards).length;
 
               return (
@@ -83,8 +85,6 @@ export function Sidebar() {
                   key={key}
                   onClick={() => {
                     toggleSubsystem(key);
-                    // Optional: jump to Inspector when turning ON so the
-                    // user immediately sees the effect.
                     if (!subsystems.has(key)) setPage("inspector");
                   }}
                   className={cn(

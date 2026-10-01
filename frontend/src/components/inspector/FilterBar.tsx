@@ -23,7 +23,7 @@ export function FilterBar() {
             onClick={() => setHwClass(h)}
             className={cn(
               "px-2.5 py-1 text-[11px] rounded mono transition-colors",
-              hwClass === h ? "bg-accent-cyan/15 text-accent-cyan" : "text-muted hover:text-white"
+              hwClass === h ? "bg-accent/15 text-accent" : "text-muted hover:text-white"
             )}
           >
             {h}

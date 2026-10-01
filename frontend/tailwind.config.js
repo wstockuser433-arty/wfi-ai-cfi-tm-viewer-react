@@ -1,47 +1,62 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  darkMode: "class",
-  content: [
-    "./index.html",
-    "./src/**/*.{ts,tsx,js,jsx}",
-  ],
+  darkMode: ["class"],   // ← enables `dark:` variant based on `<html class="dark">`
+  content: ["./index.html", "./src/**/*.{ts,tsx,js,jsx}"],
   theme: {
     extend: {
       colors: {
-        space: {
-          950: "#0A0E1A",
-          900: "#0F1422",
-          800: "#141925",
-          700: "#1B2233",
-          600: "#232B3F",
-          500: "#2C3548",
+        // Theme-aware aliases — resolve to CSS vars
+        bg: {
+          DEFAULT: "rgb(var(--bg) / <alpha-value>)",           // main background
+          card:    "rgb(var(--bg-card) / <alpha-value>)",       // card/panel background
+          elevated:"rgb(var(--bg-elevated) / <alpha-value>)",   // modals, dropdowns
+          sidebar: "rgb(var(--bg-sidebar) / <alpha-value>)",
         },
+        border: {
+          DEFAULT: "rgb(var(--border) / <alpha-value>)",
+          strong:  "rgb(var(--border-strong) / <alpha-value>)",
+        },
+        text: {
+          primary: "rgb(var(--text-primary) / <alpha-value>)",
+          muted:   "rgb(var(--text-muted) / <alpha-value>)",
+          faint:   "rgb(var(--text-faint) / <alpha-value>)",
+        },
+
         accent: {
-          cyan: "#00E5FF",
-          amber: "#FFB020",
-          red: "#FF4D5E",
-          green: "#22C55E",
+          DEFAULT: "rgb(var(--accent) / <alpha-value>)",
+          soft:    "rgb(var(--accent-soft) / <alpha-value>)",
+          hover:   "rgb(var(--accent-hover) / <alpha-value>)",
+
+          // ⭐ THIS is the fix — remap the legacy name to the CSS var
+          cyan:    "rgb(var(--accent) / <alpha-value>)",
+
+          // Keep the semantic accents
+          amber:  "#FFB020",
+          red:    "#FF4D5E",
+          green:  "#22C55E",
           purple: "#A855F7",
         },
-        muted: "#8B95A9",
+
+        muted: "rgb(var(--text-muted) / <alpha-value>)",        // legacy alias
+        space: {
+          // Legacy aliases that point to theme-aware tokens
+          950: "rgb(var(--bg) / <alpha-value>)",
+          900: "rgb(var(--bg-card) / <alpha-value>)",
+          800: "rgb(var(--bg-card) / <alpha-value>)",
+          700: "rgb(var(--bg-elevated) / <alpha-value>)",
+          600: "rgb(var(--border-strong) / <alpha-value>)",
+          500: "rgb(var(--border-strong) / <alpha-value>)",
+        },
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
-        mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "monospace"],
+        mono: ["JetBrains Mono", "ui-monospace", "monospace"],
       },
-      fontSize: {
-        "2xs": ["10px", "14px"],
-      },
-      animation: {
-        "pulse-slow": "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite",
-      },
+      fontSize: { "2xs": ["10px", "14px"] },
+      animation: { "pulse-slow": "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite" },
       boxShadow: {
-        glow: "0 0 20px rgba(0,229,255,0.15)",
-        "glow-amber": "0 0 20px rgba(255,176,32,0.15)",
-        "glow-red": "0 0 20px rgba(255,77,94,0.2)",
-      },
-      backdropBlur: {
-        xs: "2px",
+        card:  "0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03)",
+        panel: "0 8px 24px rgba(0,0,0,0.12)",
       },
     },
   },

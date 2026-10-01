@@ -7,7 +7,7 @@ export function CursorReadout({ t, values }: Props) {
   if (t == null) return null;
   return (
     <div className="absolute top-2 right-2 glass px-3 py-2 text-[11px] pointer-events-none">
-      <div className="mono text-accent-cyan mb-1">
+      <div className="mono text-accent mb-1">
         {new Date(t * 1000).toLocaleTimeString()}
       </div>
       {Object.entries(values).map(([k, v]) => (

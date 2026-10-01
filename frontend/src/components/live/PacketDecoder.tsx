@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useTelemetry } from "@/store/telemetryStore";
 import { useFilters } from "@/store/filterStore";
+import { useIsDark } from "@/hooks/useIsDark";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { formatHex } from "@/lib/utils";
@@ -9,16 +10,15 @@ export function PacketDecoder() {
   const meta = useTelemetry((s) => s.meta);
   const packets = useTelemetry((s) => s.packets);
   const subsystems = useFilters((s) => s.subsystems);
+  const isDark = useIsDark();
   const [selectedApid, setSelectedApid] = useState<number | null>(null);
 
-  // APIDs filtered by the sidebar selection (if any)
   const availableApids = useMemo(() => {
     if (!meta) return [];
     if (subsystems.size === 0) return meta.apids;
     return meta.apids.filter((a) => subsystems.has(a.subsystem));
   }, [meta, subsystems]);
 
-  // Keep selection valid when the filter changes
   useEffect(() => {
     if (availableApids.length === 0) {
       setSelectedApid(null);
@@ -82,19 +82,24 @@ export function PacketDecoder() {
         {/* Hex dump */}
         <div className="flex flex-col min-h-0">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] uppercase tracking-widest text-muted">Hex dump</span>
+            <span className="text-[10px] uppercase tracking-widest text-muted">
+              Hex dump
+            </span>
             {latest && (
               <Badge variant={latest.crc_ok ? "ok" : "crit"}>
                 CRC {latest.crc_ok ? "OK" : "FAIL"}
               </Badge>
             )}
           </div>
+          {/* bg + text resolve through CSS vars — theme-aware automatically */}
           <div className="mono text-[11px] leading-5 bg-space-950/60 border border-white/5 rounded p-2 overflow-auto flex-1">
             {hexLines.length === 0 ? (
               <span className="text-muted">waiting for packets…</span>
             ) : (
               hexLines.map((line: string, i: number) => (
-                <div key={i} className="whitespace-pre text-slate-300">{line}</div>
+                <div key={i} className="whitespace-pre text-slate-300">
+                  {line}
+                </div>
               ))
             )}
           </div>
@@ -102,13 +107,18 @@ export function PacketDecoder() {
 
         {/* Decoded fields */}
         <div className="flex flex-col min-h-0">
-          <span className="text-[10px] uppercase tracking-widest text-muted mb-2">Decoded fields</span>
+          <span className="text-[10px] uppercase tracking-widest text-muted mb-2">
+            Decoded fields
+          </span>
           <div className="space-y-1.5 overflow-auto flex-1 pr-1">
             {!latest ? (
               <span className="text-muted text-xs">no data</span>
             ) : (
               <>
-                <FieldRow label="CC" value={`0x${latest.cc.toString(16).padStart(2, "0")}`} />
+                <FieldRow
+                  label="CC"
+                  value={`0x${latest.cc.toString(16).padStart(2, "0")}`}
+                />
                 <FieldRow
                   label="APID"
                   value={`0x${latest.apid.toString(16).toUpperCase()} (${latest.card})`}
@@ -139,7 +149,10 @@ export function PacketDecoder() {
 }
 
 function FieldRow({
-  label, value, limits, status,
+  label,
+  value,
+  limits,
+  status,
 }: {
   label: string;
   value: string;
@@ -153,7 +166,9 @@ function FieldRow({
         {limits && <span className="mono text-[10px] text-muted">{limits}</span>}
         <span className="mono text-slate-100">{value}</span>
         {status && (
-          <Badge variant={status === "OK" ? "ok" : status === "WARN" ? "warn" : "crit"}>
+          <Badge
+            variant={status === "OK" ? "ok" : status === "WARN" ? "warn" : "crit"}
+          >
             {status}
           </Badge>
         )}

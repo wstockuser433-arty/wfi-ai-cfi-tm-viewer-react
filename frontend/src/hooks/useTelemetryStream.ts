@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { WS_URL, type DecodedPacket } from "@/lib/api";
 import { useTelemetry } from "@/store/telemetryStore";
 
-export function useTelemetryStream(): void {
+export function useTelemetryStream(url: string): void {
   const ingest = useTelemetry((s) => s.ingest);
   const setLink = useTelemetry((s) => s.setLink);
 
@@ -85,5 +85,5 @@ export function useTelemetryStream(): void {
       }
       wsRef.current = null;
     };
-  }, [ingest, setLink]);
+  }, [url, ingest, setLink]);
 }

@@ -4,6 +4,8 @@ import { Sidebar } from "./components/layout/Sidebar";
 import { useTelemetryStream } from "./hooks/useTelemetryStream";
 import { useMeta } from "./hooks/useMeta";
 import { useUiStore } from "./store/uiStore";
+import { useTheme } from "./hooks/useTheme";
+import { useSettings } from "./store/settingsStore";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 import { LivePage } from "./pages/LivePage";
@@ -14,10 +16,14 @@ import { InspectorPage } from "./pages/InspectorPage";  // optional
 // import { PlaybackPage } from "./pages/PlaybackPage";    // optional
 // import { LinksPage } from "./pages/LinksPage";          // optional
 
-export default function App() {
-  useMeta();
-  useTelemetryStream();
 
+export default function App() {
+  useTheme();  // applies theme to <html> and listens for OS changes
+  useMeta();
+    
+  const wsUrl = useSettings((s) => s.api.wsUrl);  // live updates if user changes settings
+  useTelemetryStream(wsUrl);
+  
   const page = useUiStore((s) => s.activePage);
   const setPage = useUiStore((s) => s.setPage);
 
