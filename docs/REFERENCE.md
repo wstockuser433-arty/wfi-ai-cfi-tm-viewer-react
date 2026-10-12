@@ -331,6 +331,223 @@ Numeric fields are **big-endian**. Float fields are IEEE-754 single precision (`
 
 Fields may be packed in **any order** as long as offsets don't overlap. Gaps between fields are allowed (padded with zeros). The registry's `_validate()` rejects overlapping fields.
 
+
+## 4.5 Packet Structure Sizes — Complete Byte-Level Reference
+
+### Two formats, two header layouts
+
+The TM Viewer supports **two** on-wire packet formats, selected by the `TM_DECODER` environment variable:
+
+| Format | `TM_DECODER` | Primary header | Length field semantics | Total packet size |
+|---|---|---|---|---|
+| **Legacy custom** | `custom` | 7 bytes | `payload_len − 1` | `10 + payload_len` |
+| **Standard CCSDS / PUS-C** | `pus` | 6 bytes | `total_len − 7` (CCSDS) | `7 + length_field` |
+
+Both formats append a **2-byte CRC-16-CCITT** (poly `0x1021`, init `0xFFFF`, big-endian) after the payload.
+
+### Common structure
+
+```
+┌───────────────────────────────────────────────────────┐
+│  PRIMARY HEADER    (6 or 7 bytes, format-dependent)   │
+├───────────────────────────────────────────────────────┤
+│  SECONDARY HEADER  (0 or 13/14 bytes, format-dependent)│
+├───────────────────────────────────────────────────────┤
+│  PAYLOAD / APP DATA (N bytes, APID-specific)          │
+├───────────────────────────────────────────────────────┤
+│  CRC-16-CCITT      (2 bytes, big-endian)              │
+└───────────────────────────────────────────────────────┘
+```
+
+### Format A — Legacy custom (7-byte header, `TM_DECODER=custom`)
+
+Used by the internal simulator and the earlier ICD draft.
+
+| Offset | Size | Field | Description |
+|---|---|---|---|
+| 0 | 1 | `CC` | Command/Control byte — always `0x08` |
+| 1–2 | 2 | `APID + flags` | Bits 0–10 = APID, bits 11–15 = flags (`0xC0`) |
+| 3–4 | 2 | `SEQ + flags` | Bits 0–13 = sequence count, bits 14–15 = flags (`0xC0`) |
+| 5–6 | 2 | `Length` | `payload_len − 1` (big-endian) |
+| 7 | N | `Payload` | APID-specific — layout from `parameters.yaml` |
+| 7+N | 2 | `CRC-16-CCITT` | Big-endian, over header + payload |
+
+**Total:** `7 + N + 2 = 9 + N` bytes.
+
+**Depacketizer formula:**
+```python
+length_field = struct.unpack_from(">H", buf, 5)[0]
+payload_len  = length_field + 1
+total        = 7 + payload_len + 2
+```
+
+### Format B — Standard CCSDS + PUS-C (6-byte header, `TM_DECODER=pus`)
+
+Used by the `send_pus_tm_apids.sh` script and by real PUS-compliant sources.
+
+#### B.1 CCSDS Primary Header (6 bytes)
+
+| Offset | Size | Field | Bits | Description |
+|---|---|---|---|---|
+| 0 | 1 | Version / Type / SecHdrFlag / APID_hi | 3 + 1 + 1 + 3 | Version=0, Type=0 (TM), SecHdrFlag=1, top 3 bits of APID |
+| 1 | 1 | APID_lo | 8 | Low 8 bits of the 11-bit APID |
+| 2 | 1 | SeqFlags / SeqCount_hi | 2 + 6 | SeqFlags=0b11 (unsegmented), top 6 bits of count |
+| 3 | 1 | SeqCount_lo | 8 | Low 8 bits of 14-bit sequence count |
+| 4–5 | 2 | Packet Data Length | 16 | `total_packet_len − 7` (big-endian) |
+
+#### B.2 PUS-C Secondary Header (14 bytes)
+
+Used with a **7-byte CUC timestamp** (the standard short format).
+
+| Offset (in sec-hdr) | Size | Field | Notes |
+|---|---|---|---|
+| 0 | 1 | PUS Version + AckFlags | Version=2 (`0x20`), Ack=0 |
+| 1 | 1 | Service Type | 0–255 |
+| 2 | 1 | Service Subtype | 0–255 |
+| 3–4 | 2 | Message Type Counter | Big-endian, wraps at 65535 |
+| 5–6 | 2 | Destination ID | Big-endian, 0 = broadcast |
+| 7–10 | 4 | Coarse Time | Unix seconds (UInt32) |
+| 11–13 | 3 | Fine Time | 1/2²⁴ second units (UInt24) |
+
+**Total secondary header: 14 bytes** (1+1+1+2+2+4+3).
+
+#### B.3 Full PUS-C TM Packet Layout
+
+| Offset | Size | Field |
+|---|---|---|
+| 0–5 | 6 | CCSDS primary header |
+| 6–19 | 14 | PUS-C secondary header (7-byte CUC timestamp) |
+| 20 | N | Application data (payload) |
+| 20+N | 2 | CRC-16-CCITT (big-endian) |
+
+**Total:** `6 + 14 + N + 2 = 22 + N` bytes.
+
+**Depacketizer formula:**
+```python
+length_field = struct.unpack_from(">H", buf, 4)[0]
+total        = length_field + 7
+```
+
+### Depacketizer dispatch
+
+`backend/app/tm_service/ingestion/format_map.py` maps `TM_DECODER` to the correct header length:
+
+```python
+HEADER_LEN_BY_DECODER = {
+    "custom": 7,
+    "pus":    6,
+    "oem":    6,   # placeholder
+}
+```
+
+`StreamDepacketizer(header_len=…)` then branches on that to apply the correct length formula.
+
+### Per-APID packet sizes (custom format)
+
+Under `TM_DECODER=custom`, each APID has a fixed payload layout in `parameters.yaml`. Here are the exact on-wire sizes:
+
+| APID | Subsystem / Card | Payload (bytes) | Primary hdr | CRC | **Total frame** |
+|---|---|---|---|---|---|
+| `0x100` CAM_ELEC | Camera Electronics | 38 | 7 | 2 | **47 B** |
+| `0x110` CDPM_P_FPGA | FPGA Processing | 36 | 7 | 2 | **45 B** |
+| `0x111` CDPM_P_AI | AI Board | 31 | 7 | 2 | **40 B** |
+| `0x112` CDPM_P_THCC | Thermal Control | 22 | 7 | 2 | **31 B** |
+| `0x120` CDPM_R_FPGA | FPGA Processing | 36 | 7 | 2 | **45 B** |
+| `0x121` CDPM_R_AI | AI Board | 31 | 7 | 2 | **40 B** |
+| `0x130` CTPU_P_PWR | Power Card | 31 | 7 | 2 | **40 B** |
+| `0x131` CTPU_P_PPC | Power Processing | 30 | 7 | 2 | **39 B** |
+| `0x140` CTPU_R_PWR | Power Card | 31 | 7 | 2 | **40 B** |
+| `0x141` CTPU_R_PPC | Power Processing | 30 | 7 | 2 | **39 B** |
+| `0x150` UNIT_HK | Unit Housekeeping | 17 | 7 | 2 | **26 B** |
+| `0x200`–`0x206` LINKS (7) | RS-422 link health | 21 | 7 | 2 | **30 B each** |
+
+> **Payload size is derived from the highest `offset + type_size` in the card's field list.** The numbers above are computed from the current `parameters.yaml`. If you add/remove fields, recompute by taking `max(offset + type_size)`.
+
+### Per-APID packet sizes (PUS-C format)
+
+Under `TM_DECODER=pus`, the primary header shrinks to 6 bytes but a **14-byte secondary header** is added:
+
+| APID | Application data (bytes) | Primary hdr | Secondary hdr | CRC | **Total frame** |
+|---|---|---|---|---|---|
+| `0x100` | 38 | 6 | 14 | 2 | **60 B** |
+| `0x110` | 36 | 6 | 14 | 2 | **58 B** |
+| `0x111` | 31 | 6 | 14 | 2 | **53 B** |
+| `0x112` | 22 | 6 | 14 | 2 | **44 B** |
+| `0x120` | 36 | 6 | 14 | 2 | **58 B** |
+| `0x121` | 31 | 6 | 14 | 2 | **53 B** |
+| `0x130` | 31 | 6 | 14 | 2 | **53 B** |
+| `0x131` | 30 | 6 | 14 | 2 | **52 B** |
+| `0x140` | 31 | 6 | 14 | 2 | **53 B** |
+| `0x141` | 30 | 6 | 14 | 2 | **52 B** |
+| `0x150` | 17 | 6 | 14 | 2 | **39 B** |
+| `0x200`–`0x206` (7) | 21 | 6 | 14 | 2 | **43 B each** |
+
+> **Note:** The 6-byte CCSDS primary header replaces the 7-byte custom header (`−1 byte`), but the 14-byte PUS secondary header is added (`+14 bytes`). Net difference vs custom: **+13 bytes per packet**.
+
+### What the `send_pus_tm_apids.sh` script emits
+
+The bash script you're using generates **PUS-C Format B** packets with the following characteristics:
+
+```
+CCSDS primary header ........... 6 bytes
+PUS-C secondary header ......... 14 bytes  (7-byte CUC timestamp)
+Application data ............... 4 bytes   ("DEADBEEF" by default)
+CRC-16-CCITT ................... 2 bytes
+─────────────────────────────────────────
+TOTAL per packet ............... 26 bytes
+```
+
+**CCSDS length field value:** `26 − 7 = 19` → `0x0013`, matching the wire capture.
+
+### Worked example — decoding a real UDP packet
+
+Hex bytes from Wireshark (26 bytes):
+
+```
+0a 05 c0 91 00 13 20 03 19 00 91 00 00 6a cc 8c 07 3b 5b 9c de ad be ef a4 56
+```
+
+| Offset | Bytes | Field | Value |
+|---|---|---|---|
+| 0–1 | `0a 05` | Version/Type/SecHdr/APID_hi + APID_lo | Version=0, Type=0, SecHdr=1, APID=`0x205` |
+| 2–3 | `c0 91` | SeqFlags + SeqCount | Flags=0b11, Count=145 |
+| 4–5 | `00 13` | Packet Data Length | `0x0013 = 19` → total = 19 + 7 = 26 ✅ |
+| 6 | `20` | PUS Version + Ack | Version=2, Ack=0 |
+| 7 | `03` | Service Type | 3 (housekeeping) |
+| 8 | `19` | Service Subtype | 25 |
+| 9–10 | `00 91` | Message Counter | 145 |
+| 11–12 | `00 00` | Destination ID | 0 |
+| 13–16 | `6a cc 8c 07` | Coarse Time | `0x6ACC8C07` = 1,790,036,487 (Unix seconds) |
+| 17–19 | `3b 5b 9c` | Fine Time | UInt24 fractional seconds |
+| 20–23 | `de ad be ef` | Application Data | `DEADBEEF` |
+| 24–25 | `a4 56` | CRC-16-CCITT | Big-endian |
+
+**`spacepackets` note:** `PusTelemetry.unpack(data=..., timestamp_len=7)` parses the CCSDS + PUS headers correctly, exposes the application data as `tm.tm_data` (or the alias `tm.source_data`), and returns a CRC-validated object.
+
+### Quick size cheat sheet
+
+| Concern | Value |
+|---|---|
+| Legacy custom frame | `9 + payload_len` bytes |
+| CCSDS + PUS-C frame | `22 + app_data_len` bytes |
+| Overhead (custom) | 9 bytes fixed |
+| Overhead (PUS-C) | 22 bytes fixed |
+| Header-to-CRC ratio (typical) | ~40–50 % overhead at 21–38 B payloads |
+| Max payload (both) | 65535 bytes (16-bit length field) |
+| Padding | None — all fields byte-aligned, no packing flags |
+
+### Reference — where these numbers come from
+
+| Source | File |
+|---|---|
+| Legacy header layout | `backend/app/tm_service/ingestion/depacketizer.py` — `header_len=7` branch |
+| CCSDS header layout | `backend/app/tm_service/inspector/ccsds.py` and CCSDS 133.0-B-1 |
+| PUS-C secondary header | ECSS-E-ST-70-41C, and `spacepackets.ecss.tm.PusTm` |
+| Field sizes | `backend/app/tm_service/registry.py` `STRUCT_SIZE` map |
+| Payload sizes | Derived from `backend/app/tm_dictionary/parameters.yaml` |
+| Length formulas | `StreamDepacketizer.feed()` — branches on `header_len` |
+
+
 ---
 
 ## 5. TM Dictionary — Subsystems, Cards, Parameters
@@ -532,15 +749,32 @@ links:
 
 ### Depacketizer
 
-Given a byte stream, the depacketizer slices out complete frames:
+Given a byte stream, the depacketizer slices out complete frames. It supports **two header layouts**, selected by the `header_len` parameter:
+
+#### Custom format (`header_len=7`, `TM_DECODER=custom`)
 
 1. Accumulate incoming bytes in a buffer
 2. Read `length` from bytes 5–6 (payload length − 1)
-3. Total frame = `7 + (length + 1) + 2` bytes
+3. Total frame = `7 + (length + 1) + 2` = **`length + 10`** bytes
 4. If buffer has a full frame → emit it, delete from buffer
 5. If `length` is bogus (> 65535 or would require overlap) → shift by 1 byte (resync)
 
-The `StreamDepacketizer` is used by **both** TCP source and every UDP datagram (a fresh instance per datagram to guarantee message-boundary alignment).
+#### CCSDS / PUS-C format (`header_len=6`, `TM_DECODER=pus`)
+
+1. Accumulate incoming bytes in a buffer
+2. Read `length` from bytes 4–5 (CCSDS "Packet Data Length")
+3. Total frame = `length + 7` bytes (CCSDS convention: `length = total_len − 7`)
+4. If buffer has a full frame → emit it, delete from buffer
+5. If `length` is bogus → shift by 1 byte (resync)
+
+#### Length formula summary
+
+| Format | `header_len` | Length field semantics | Total packet size |
+|---|---|---|---|
+| Legacy custom | 7 | `payload_len − 1` | `length_field + 10` |
+| Standard CCSDS | 6 | `total_len − 7` | `length_field + 7` |
+
+The header length is chosen at startup via `format_map.header_len_for(settings.tm_decoder)`. The `StreamDepacketizer` is used by **both** TCP source and every UDP datagram (a fresh instance per datagram to guarantee message-boundary alignment).
 
 ### Decode step
 
@@ -693,7 +927,17 @@ SIM_RATE_HZ=10     # ← 10 Hz = 10 batches/s = 30 packets/s (3 packets per tick
                    #    actually 18 packets × 10 Hz = 180 pkt/s)
 ```
 
-> Note: `packet_builder.build_all()` emits **18 frames per tick** (one per APID). At `rate_hz=10`, that's 180 pkt/s. The Live page counter on your machine shows ~30 pkt/s because the simulator only emits AOCS/Power/Thermal in the earlier simplified version — the current version emits all 18.
+> **Packet rate math:** `packet_builder.build_all()` emits **18 frames per tick** (one per APID). At the default `SIM_RATE_HZ=10`, the simulator produces **180 packets per second** (18 × 10). The Live page counter reflects this aggregate rate, not the per-tick count.
+>
+> To reproduce a specific aggregate rate, divide by 18:
+>
+> | Aggregate pkt/s | `SIM_RATE_HZ` |
+> |---|---|
+> | 18  | 1  |
+> | 90  | 5  |
+> | 180 | 10 (default) |
+> | 360 | 20 |
+> | 900 | 50 |
 
 #### Change the drift model
 
@@ -1278,20 +1522,60 @@ Fields with only LTL/HTL: two-level alarm. Fields with all four: three-level (OK
 
 ## Appendix C — File Inventory
 
+### Backend — TM Service
+
 | Path | Purpose | Edit when |
 |---|---|---|
 | `backend/app/tm_dictionary/parameters.yaml` | Card/field definitions | ICD updates, new params |
 | `backend/app/tm_dictionary/links.yaml` | RS-422 link definitions | New links, changed counters |
-| `backend/app/sim/spacecraft_model.py` | Simulator state + tick | Testing drift models, injecting faults |
-| `backend/app/sim/packet_builder.py` | Sim → frames | Rarely (only if struct packing changes) |
 | `backend/app/tm_service/registry.py` | YAML loader + validator | Schema changes |
-| `backend/app/tm_service/inspector/decoder.py` | Field extraction | If decode logic changes |
-| `backend/app/tm_service/ingestion/*` | Sources | New source type |
-| `backend/app/main.py` | Startup wiring | New subsystems, new sources |
+| `backend/app/tm_service/ingestion/*` | Sources (TCP, UDP, file, DB) | New source type |
+| `backend/app/tm_service/ingestion/depacketizer.py` | Stream → frame slicer | Length-field semantics change |
+| `backend/app/tm_service/ingestion/format_map.py` | Decoder mode → `header_len` map | New decoder format added |
+| `backend/app/main.py` | Startup wiring, decoder init | New subsystems, new sources |
+
+### Backend — Inspector / Decoders
+
+| Path | Purpose | Edit when |
+|---|---|---|
+| `backend/app/tm_service/inspector/base.py` | `PacketDecoder` ABC — decoder interface | Adding methods to the interface |
+| `backend/app/tm_service/inspector/custom_decoder.py` | Legacy 7-byte-header decoder | Custom ICD layout changes |
+| `backend/app/tm_service/inspector/pus_decoder.py` | ECSS PUS-C decoder (via `spacepackets`) | PUS version changes, timestamp length changes |
+| `backend/app/tm_service/inspector/factory.py` | Decoder registry + `get_decoder()` | Registering a new decoder |
+| `backend/app/tm_service/inspector/ccsds.py` | CCSDS primary-header parser | Rarely |
+| `backend/app/tm_service/inspector/crc.py` | CRC-16-CCITT | Never |
+
+### Backend — Simulator
+
+| Path | Purpose | Edit when |
+|---|---|---|
+| `backend/app/sim/spacecraft_model.py` | Simulator state + `tick()` | Testing drift models, injecting faults |
+| `backend/app/sim/packet_builder.py` | State → frames | Rarely (only if struct packing changes) |
+| `backend/app/sim/tcp_emitter.py` | Feeds TCP source locally | Rarely |
+
+### Frontend
+
+| Path | Purpose | Edit when |
+|---|---|---|
 | `frontend/src/components/live/KpiCards.tsx` | KPI tiles | Which params show on Live |
 | `frontend/src/components/live/LiveChart.tsx` | Live chart series | Which params trend |
+| `frontend/src/components/live/PacketDecoder.tsx` | Hex + decoded inspector | Adding fields to the header row |
 | `frontend/src/pages/*.tsx` | Route-level UI | Adding features per page |
-| `frontend/src/store/telemetryStore.ts` | Runtime state | If ingest/alarm logic changes |
+| `frontend/src/store/telemetryStore.ts` | Runtime state + alarm engine | If ingest/alarm logic changes |
+| `frontend/src/store/settingsStore.ts` | Theme + API config | Adding new settings |
+| `frontend/src/hooks/useTelemetryStream.ts` | WS client with reconnect | Stream protocol changes |
+| `frontend/src/lib/api.ts` | API base URLs, wire DTOs | Backend schema changes |
+
+### Configuration
+
+| Path | Purpose | Edit when |
+|---|---|---|
+| `backend/.env` | Runtime config (ports, decoder mode, DB URLs) | Environment changes |
+| `backend/.env.example` | Config template | Adding new config keys |
+| `backend/requirements.txt` | Python deps | Adding libraries (e.g. `spacepackets`) |
+| `frontend/package.json` | Node deps | Adding libraries |
+| `frontend/tailwind.config.js` | Theme tokens, colors | Rebranding, palette changes |
+| `frontend/src/index.css` | CSS variables (dark + light themes) | Theme adjustments |
 
 ---
 
