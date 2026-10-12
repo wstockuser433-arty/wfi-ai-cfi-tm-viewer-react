@@ -1,0 +1,3 @@
+sudo ufw allow 9200/udp                 # only if ufw is enabled
+sudo tcpdump -i any -X udp port 9200    # watch the raw packets
+nc -ul 9200 | xxd                       # or dump the bytes with netcat

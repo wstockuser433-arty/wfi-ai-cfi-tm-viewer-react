@@ -27,6 +27,8 @@ from typing import Optional
 
 from .base import AbstractTmSource, PacketSink
 from .depacketizer import StreamDepacketizer
+from ...config import settings
+from .format_map import header_len_for
 
 log = logging.getLogger(__name__)
 
@@ -74,6 +76,7 @@ class UdpSource(AbstractTmSource):
         super().__init__(sink)
         self.host = host
         self.port = port
+        self.header_len = header_len_for(settings.tm_decoder)
         self.multicast = multicast
         self.interface = interface
         self.recv_buffer = recv_buffer
@@ -184,7 +187,9 @@ class UdpSource(AbstractTmSource):
             log.debug("dropping short datagram (%d bytes) from %s", len(data), addr)
             return
 
-        dp = StreamDepacketizer()
+        # dp = StreamDepacketizer()
+        # inside _on_datagram:
+        dp = StreamDepacketizer(header_len=self.header_len) 
         frames = dp.feed(data)
 
         if not frames:

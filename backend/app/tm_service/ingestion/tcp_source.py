@@ -4,6 +4,8 @@ import time
 
 from .base import AbstractTmSource, PacketSink
 from .depacketizer import StreamDepacketizer
+from ...config import settings
+from .format_map import header_len_for
 
 log = logging.getLogger(__name__)
 
@@ -13,6 +15,7 @@ class TcpSource(AbstractTmSource):
         super().__init__(sink)
         self.host = host
         self.port = port
+        self._header_len = header_len_for(settings.tm_decoder)
         self._server: asyncio.AbstractServer | None = None
 
     async def start(self) -> None:
@@ -30,7 +33,8 @@ class TcpSource(AbstractTmSource):
     async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         peer = writer.get_extra_info("peername")
         log.info("TCP client connected: %s", peer)
-        depkt = StreamDepacketizer()
+        # depkt = StreamDepacketizer()
+        depkt = StreamDepacketizer(header_len=self._header_len)
         try:
             while self._running:
                 chunk = await reader.read(4096)

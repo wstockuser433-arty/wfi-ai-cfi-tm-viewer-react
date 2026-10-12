@@ -7,8 +7,12 @@ class Settings(BaseSettings):
     # Ingestion
     tm_listen_host: str = "0.0.0.0"
     tm_listen_port: int = 9100
+    udp_listen_port: int = 9200
     enable_sim: bool = True
     sim_rate_hz: float = 10.0
+
+    # ⭐ Decoder selection
+    tm_decoder: str = "pus"     # "custom" | "pus" | "oem" (future)
 
     # Storage
     redis_url: str = "redis://localhost:6379/0"
@@ -20,6 +24,8 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
     api_host: str = "0.0.0.0"
     api_port: int = 8000
+
+    tm_pus_timestamp_len: int = 7    # bytes; 7 for CUC short, 4 for CDS, 0 for none
 
 
 settings = Settings()

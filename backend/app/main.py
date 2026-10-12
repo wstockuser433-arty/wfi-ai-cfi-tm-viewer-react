@@ -4,7 +4,7 @@ WFI-AI-CFI TM Viewer — FastAPI application entrypoint.
 Startup sequence (in lifespan):
   1. Create database tables
   2. Connect to Redis
-  3. Create StorageWriter
+  3. Create StorageWriter + Decoder
   4. Create IngestionManager with an on_packet handler
   5. Start TCP source (port 9100)
   6. Start UDP source (port 9200)
@@ -28,7 +28,7 @@ from .db.postgres import SessionLocal, init_db
 from .db.redis_client import get_redis
 from .schemas.packet import DecodedPacket
 from .tm_service.ingestion.manager import IngestionManager
-from .tm_service.inspector.decoder import decode as decode_packet
+from .tm_service.inspector.factory import get_decoder        # ⭐ changed
 from .tm_service.storage.writer import StorageWriter
 
 # Routers
@@ -40,7 +40,6 @@ from .api.routes_upload import router as upload_router
 from .api.routes_links import router as links_router
 from .api.ws_telemetry import router as ws_router
 
-import logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s — %(message)s",
@@ -48,16 +47,22 @@ logging.basicConfig(
 
 log = logging.getLogger(__name__)
 
-# Module-level so ws_telemetry.py can reach it via `from ..main import manager`
 manager: IngestionManager | None = None
+decoder = None      # ⭐ module-level so on_packet can use it
 
 
 # ---------------------------------------------------------------------- #
 # Packet handler — decode → store → fan-out
 # ---------------------------------------------------------------------- #
 async def on_packet(raw: bytes, ts: float) -> None:
+    log.info("on_packet: got %d bytes", len(raw)) 
+    global decoder
+    if decoder is None:
+        log.error("Decoder not initialized; dropping packet")
+        return
+
     try:
-        pkt_dict = decode_packet(raw, ts)
+        pkt_dict = decoder.decode(raw, ts)
         pkt = DecodedPacket(**pkt_dict)
     except Exception:
         log.exception("Failed to decode packet (len=%d)", len(raw))
@@ -84,13 +89,12 @@ async def on_packet(raw: bytes, ts: float) -> None:
 
 
 # ---------------------------------------------------------------------- #
-# Lifespan — replace `@app.on_event("startup")`
+# Lifespan
 # ---------------------------------------------------------------------- #
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global manager
+    global manager, decoder
 
-    # ---- Startup -------------------------------------------------------
     log.info("==> Starting TM Viewer backend")
 
     log.info("[1/6] Initializing database …")
@@ -99,29 +103,24 @@ async def lifespan(app: FastAPI):
     log.info("[2/6] Connecting to Redis …")
     redis = await get_redis()
 
-    log.info("[3/6] Creating StorageWriter …")
+    log.info("[3/6] Creating StorageWriter + Decoder (mode=%s) …",
+             settings.tm_decoder)
     writer = StorageWriter(redis)
+    decoder = get_decoder(settings.tm_decoder)      # ⭐ init the decoder
 
     log.info("[4/6] Creating IngestionManager …")
     manager = IngestionManager(on_packet)
-    manager.writer = writer  # attach for on_packet access
+    manager.writer = writer
 
     log.info("[5/6] Starting ingestion sources …")
     await manager.start_tcp(settings.tm_listen_host, settings.tm_listen_port)
     await manager.start_udp(settings.tm_listen_host, 9200)
-    # Give the sockets a moment to actually bind before spawning the sim
     await asyncio.sleep(0.5)
 
     if settings.enable_sim:
         log.info("[6/6] Starting simulator at %.1f Hz …", settings.sim_rate_hz)
         from .sim.tcp_emitter import start_simulator
-        asyncio.create_task(
-            start_simulator(
-                settings.tm_listen_host,
-                settings.tm_listen_port,
-                rate_hz=settings.sim_rate_hz,
-            )
-        )
+
         def _log_sim_crash(t: asyncio.Task):
             try:
                 t.result()
@@ -130,19 +129,22 @@ async def lifespan(app: FastAPI):
             except Exception:
                 log.exception("Simulator task crashed")
 
-        sim_task = asyncio.create_task(start_simulator(settings.tm_listen_host,
+        sim_task = asyncio.create_task(
+            start_simulator(
+                settings.tm_listen_host,
                 settings.tm_listen_port,
-                rate_hz=settings.sim_rate_hz,))
+                rate_hz=settings.sim_rate_hz,
+            )
+        )
         sim_task.add_done_callback(_log_sim_crash)
     else:
         log.info("[6/6] Simulator disabled (ENABLE_SIM=false)")
 
-    log.info("==> Startup complete. Sources: TCP:%d, UDP:9200",
-             settings.tm_listen_port)
+    log.info("==> Startup complete. Sources: TCP:%d, UDP:9200, decoder=%s",
+             settings.tm_listen_port, settings.tm_decoder)
 
     yield
 
-    # ---- Shutdown ------------------------------------------------------
     log.info("==> Shutting down …")
     if manager is not None:
         await manager.stop()
@@ -166,7 +168,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Routers
 app.include_router(meta_router)
 app.include_router(packets_router)
 app.include_router(history_router)

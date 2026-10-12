@@ -21,4 +21,8 @@ export interface DecodedPacket {
   raw_hex: string;
   fields: Record<string, DecodedField>;
   timestamp: number;
+
+  // PUS-specific (present only when decoded by PusDecoder)
+  service_type?: number;
+  service_subtype?: number;
 }

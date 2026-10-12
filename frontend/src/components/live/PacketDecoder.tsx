@@ -115,31 +115,25 @@ export function PacketDecoder() {
               <span className="text-muted text-xs">no data</span>
             ) : (
               <>
-                <FieldRow
-                  label="CC"
-                  value={`0x${latest.cc.toString(16).padStart(2, "0")}`}
-                />
-                <FieldRow
-                  label="APID"
-                  value={`0x${latest.apid.toString(16).toUpperCase()} (${latest.card})`}
-                />
-                <FieldRow label="Seq" value={latest.seq.toString()} />
-                <FieldRow label="Len" value={latest.length.toString()} />
-                <div className="h-px bg-white/5 my-2" />
-                {Object.entries(latest.fields).map(([k, f]) => (
-                  <FieldRow
-                    key={k}
-                    label={k}
-                    value={
-                      f.enum && f.enum[String(f.value)]
-                        ? `${f.value} (${f.enum[String(f.value)]})`
-                        : `${f.value} ${f.unit}`
-                    }
-                    limits={`${f.limits[0] ?? "—"}–${f.limits[1] ?? "—"}`}
-                    status={f.status}
-                  />
-                ))}
-              </>
+              <FieldRow label="CC" value={`0x${latest.cc.toString(16).padStart(2, "0")}`} />
+              <FieldRow
+                label="APID"
+                value={`0x${latest.apid.toString(16).toUpperCase()} (${latest.card})`}
+              />
+              <FieldRow label="Seq" value={latest.seq.toString()} />
+              <FieldRow label="Len" value={latest.length.toString()} />
+
+              {/* ⭐ PUS-specific rows — render only when present */}
+              {latest.service_type !== undefined && (
+                <FieldRow label="PUS Service" value={String(latest.service_type)} />
+              )}
+              {latest.service_subtype !== undefined && (
+                <FieldRow label="PUS Subservice" value={String(latest.service_subtype)} />
+              )}
+
+              <div className="h-px bg-white/5 my-2" />
+              {/* ... existing field rows ... */}
+            </>
             )}
           </div>
         </div>

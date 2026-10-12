@@ -3,10 +3,10 @@ import json
 from datetime import datetime
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from sqlalchemy import select
+from ..config import settings
 from ..db.postgres import SessionLocal
 from ..db.models.packet import PacketRow
-from ..tm_service.registry import get_registry
-from ..tm_service.inspector.decoder import decode
+from ..tm_service.inspector.factory import get_decoder
 
 router = APIRouter()
 
@@ -45,9 +45,15 @@ async def ws_playback(
         await ws.close()
         return
 
-    reg = get_registry()
+    # Same decoder the live pipeline uses — ensures replay and live agree
+    decoder = get_decoder(settings.tm_decoder)
+
     async with SessionLocal() as db:
-        stmt = select(PacketRow).where(PacketRow.ts >= t0, PacketRow.ts <= t1).order_by(PacketRow.ts)
+        stmt = (
+            select(PacketRow)
+            .where(PacketRow.ts >= t0, PacketRow.ts <= t1)
+            .order_by(PacketRow.ts)
+        )
         rows = (await db.execute(stmt)).scalars().all()
 
     prev = None
@@ -59,7 +65,7 @@ async def ws_playback(
         prev = row.ts
 
         # Re-decode from stored raw hex (source of truth)
-        pkt = decode(bytes.fromhex(row.raw_hex), row.ts.timestamp())
+        pkt = decoder.decode(bytes.fromhex(row.raw_hex), row.ts.timestamp())
         await ws.send_text(json.dumps({"t": pkt["timestamp"], "packets": [pkt]}))
 
     await ws.send_text(json.dumps({"done": True}))
