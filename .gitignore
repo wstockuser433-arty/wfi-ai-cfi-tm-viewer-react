@@ -194,3 +194,5 @@ analysis/*.ipynb
 *.spec
 build/
 dist/
+
+docs/eth-setup-rel/script-launcher/.build-pkgs
