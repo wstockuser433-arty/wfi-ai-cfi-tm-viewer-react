@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     sim_rate_hz: float = 10.0
 
     # ⭐ Decoder selection
-    tm_decoder: str = "pus"     # "custom" | "pus" | "oem" (future)
+    tm_decoder: str = "pus"     # "custom" | "pus" | "ebox" | "oem" (future)
 
     # Storage
     redis_url: str = "redis://localhost:6379/0"

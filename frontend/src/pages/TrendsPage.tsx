@@ -10,26 +10,24 @@ export function TrendsPage() {
   const meta = useTelemetry((s) => s.meta);
   const isDark = useIsDark();
   const [selected, setSelected] = useState<Set<string>>(
-    new Set(["0x100:cam_fpa_temp", "0x111:ai_soc_temp", "0x131:ppc_dcdc_temp"])
-  );
+  new Set(["16:cam_fpa_temp", "33:ai_soc_temp", "65:ppc_dcdc_temp"])
+);
 
   const availableParams = useMemo(() => {
-    if (!meta) return [];
-    const out: { key: string; label: string; color: string }[] = [];
-    for (const [subKey, sub] of Object.entries(meta.subsystems)) {
-      for (const [cardKey, card] of Object.entries(sub.cards)) {
-        for (const f of card.fields) {
-          if (f.type === "u8" || f.type === "u16") continue;
-          out.push({
-            key: `0x${card.apid.toString(16).toUpperCase()}:${f.name}`,
-            label: `${subKey}/${cardKey}.${f.name}`,
-            color: subsystemColor(subKey, isDark),
-          });
-        }
-      }
+  if (!meta?.cards) return [];
+  const out: { key: string; label: string; color: string }[] = [];
+  for (const [cardKey, card] of Object.entries(meta.cards)) {
+    for (const f of card.fields ?? []) {
+      if (f.type === "u8" || f.type === "u16") continue;
+      out.push({
+        key: `${card.apid}:${f.name}`,
+        label: `${card.subsystem}/${cardKey}.${f.name}`,
+        color: subsystemColor(card.subsystem, isDark),
+      });
     }
-    return out;
-  }, [meta, isDark]);
+  }
+  return out;
+}, [meta, isDark]);
 
   const toggle = (key: string) => {
     const next = new Set(selected);

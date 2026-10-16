@@ -23,18 +23,9 @@ interface Sample {
 // Series colors are theme-independent (they're accent hues); only the
 // chrome (grid, axes, tooltip) swaps between themes.
 const SERIES = [
-  { apid: 0x100, field: "cam_fpa_temp",  key: "cam_fpa" as const,
-    label: "Camera FPA Temp",
-    color: "#8494DA",         // ⭐ dark: periwinkle
-    colorLight: "#4B5FB4" },  // ⭐ light: periwinkle
-  { apid: 0x111, field: "ai_soc_temp",   key: "ai_soc" as const,
-    label: "CDPM (P) AI SoC",
-    color: "#22C55E",
-    colorLight: "#15803D" },
-  { apid: 0x131, field: "ppc_dcdc_temp", key: "ppc_dcdc" as const,
-    label: "CTPU (P) DC-DC",
-    color: "#FFB020",
-    colorLight: "#B45309" },
+  { apid: 16, field: "cam_fpa_temp",  key: "cam_fpa" as const,  label: "Camera FPA Temp", color: "#8494DA", colorLight: "#4B5FB4" },
+  { apid: 33, field: "ai_soc_temp",   key: "ai_soc" as const,   label: "CDPM (P) AI SoC", color: "#22C55E", colorLight: "#15803D" },
+  { apid: 65, field: "ppc_dcdc_temp", key: "ppc_dcdc" as const, label: "CTPU (P) DC-DC",   color: "#FFB020", colorLight: "#B45309" },
 ];
 
 const REBUILD_INTERVAL_MS = 500;

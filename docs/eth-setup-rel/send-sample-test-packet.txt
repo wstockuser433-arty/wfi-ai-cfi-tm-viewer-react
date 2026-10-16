@@ -1,0 +1,16 @@
+python - <<'PY'
+import socket, time
+from app.tm_service.inspector.ebox_checksum import compute_ebox_checksum
+
+body = bytes.fromhex("482bc0000009011a106401deadbeef")
+cs = compute_ebox_checksum(body)
+inner = body + bytes([cs])
+frame = bytes([0x23,0x23,0x2A,0x2A]) + inner + bytes([0x2A,0x2A,0x23,0x23])
+
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+for _ in range(3):
+    s.sendto(frame, ("127.0.0.1", 9200))
+    time.sleep(0.2)
+s.close()
+print(f"sent 3× {len(frame)} bytes:", frame.hex())
+PY

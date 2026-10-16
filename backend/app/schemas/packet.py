@@ -25,9 +25,16 @@ class DecodedPacket(BaseModel):
     fields: dict[str, DecodedField]
     timestamp: float
 
-    # ⭐ PUS-specific — present only when decoded by PusDecoder
+    # PUS-specific
     service_type: int | None = None
     service_subtype: int | None = None
+
+    # EBOX-specific
+    unit_id: int | None = None
+    unit_sub_id: int | None = None
+    sub_hdr_value: int | None = None
+    sub_hdr_label: str | None = None
+    seq_flags: int | None = None
 
     def model_dump_json_safe(self) -> str:
         return self.model_dump_json()

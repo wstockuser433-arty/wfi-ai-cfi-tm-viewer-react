@@ -4,6 +4,7 @@ import logging
 from .base import PacketDecoder
 from .custom_decoder import CustomDecoder
 from .pus_decoder import PusDecoder
+from .ebox_decoder import EboxDecoder 
 
 log = logging.getLogger(__name__)
 
@@ -11,6 +12,7 @@ log = logging.getLogger(__name__)
 _REGISTRY: dict[str, type[PacketDecoder]] = {
     "custom": CustomDecoder,
     "pus": PusDecoder,
+    "ebox": EboxDecoder,
     # "oem": OemDecoder,   # future
 }
 

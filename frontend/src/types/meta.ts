@@ -12,26 +12,28 @@ export interface FieldSpec {
 
 export interface CardSpec {
   label: string;
-  apid: number;
+  unit_sub_id: number;
+  service: number;
+  subservice: number;
+  subsystem: string;
   hw_class: "HW" | "SW";
   fields: FieldSpec[];
-}
-
-export interface SubsystemSpec {
-  label: string;
-  color: string;
-  cards: Record<string, CardSpec>;
-}
-
-export interface LinkSpec {
-  id: string;
-  label: string;
+  // Apid-like key for frontend convenience (equals unit_sub_id in EBOX)
   apid: number;
-  fields: FieldSpec[];
+}
+
+export interface ApidEntry {
+  apid: number;
+  subsystem: string;
+  card: string;
+  label: string;
+  unit_sub_id: number;
+  service: number;
+  subservice: number;
 }
 
 export interface MetaResponse {
-  subsystems: Record<string, SubsystemSpec>;
-  links: LinkSpec[];
-  apids: { apid: number; subsystem: string; card: string; label: string }[];
+  unit: { id: number; label: string };
+  apids: ApidEntry[];
+  cards: Record<string, CardSpec>;
 }

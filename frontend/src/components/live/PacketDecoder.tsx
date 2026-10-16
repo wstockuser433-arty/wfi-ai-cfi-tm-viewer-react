@@ -64,20 +64,23 @@ export function PacketDecoder() {
         <select
           value={selectedApid ?? ""}
           onChange={(e) => setSelectedApid(Number(e.target.value))}
-          className="select-dark max-w-xs"
+          className="select-dark max-w-md"
         >
           {availableApids.length === 0 ? (
-            <option value="">no APIDs match filter</option>
+            <option value="">no cards match filter</option>
           ) : (
             availableApids.map((a) => (
               <option key={a.apid} value={a.apid}>
-                0x{a.apid.toString(16).toUpperCase()} · {a.subsystem}/{a.card}
+                Sub 0x{a.unit_sub_id.toString(16).toUpperCase()} ·{" "}
+                Svc 0x{a.service.toString(16).toUpperCase()} ·{" "}
+                SubSvc 0x{a.subservice.toString(16).toUpperCase()} ·{" "}
+                {a.subsystem}/{a.card}
               </option>
             ))
           )}
         </select>
       </div>
-
+      
       <div className="grid grid-cols-2 gap-4 flex-1 min-h-0">
         {/* Hex dump */}
         <div className="flex flex-col min-h-0">
@@ -129,6 +132,22 @@ export function PacketDecoder() {
               )}
               {latest.service_subtype !== undefined && (
                 <FieldRow label="PUS Subservice" value={String(latest.service_subtype)} />
+              )}
+
+              {latest.unit_id !== undefined && (
+                <FieldRow label="Unit ID" value={`0x${latest.unit_id.toString(16).toUpperCase()}`} />
+              )}
+              {latest.unit_sub_id !== undefined && (
+                <FieldRow label="Unit Sub ID" value={`0x${latest.unit_sub_id.toString(16).toUpperCase()}`} />
+              )}
+              {latest.sub_hdr_label !== undefined && (
+                <FieldRow label="Sub-header" value={latest.sub_hdr_label} />
+              )}
+              {latest.service_type !== undefined && (
+                <FieldRow label="Service" value={`0x${latest.service_type.toString(16).toUpperCase()}`} />
+              )}
+              {latest.service_subtype !== undefined && (
+                <FieldRow label="Sub-Service" value={`0x${latest.service_subtype.toString(16).toUpperCase()}`} />
               )}
 
               <div className="h-px bg-white/5 my-2" />

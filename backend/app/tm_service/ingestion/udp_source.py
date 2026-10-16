@@ -27,6 +27,7 @@ from typing import Optional
 
 from .base import AbstractTmSource, PacketSink
 from .depacketizer import StreamDepacketizer
+from .rs422_framer import Rs422Framer
 from ...config import settings
 from .format_map import header_len_for
 
@@ -84,6 +85,8 @@ class UdpSource(AbstractTmSource):
         self._transport: Optional[asyncio.DatagramTransport] = None
         self._protocol: Optional[_UdpProtocol] = None
         self._task: Optional[asyncio.Task] = None
+        self._is_ebox = settings.tm_decoder.lower() == "ebox"
+        self._header_len = header_len_for(settings.tm_decoder)
 
     # ------------------------------------------------------------------ #
     # Lifecycle
@@ -175,29 +178,35 @@ class UdpSource(AbstractTmSource):
     # Called by _UdpProtocol for each datagram
     # ------------------------------------------------------------------ #
     async def _on_datagram(self, data: bytes, addr: tuple[str, int]) -> None:
-        """
-        One datagram → possibly multiple CCSDS frames.
+        if self._is_ebox:
+            # One datagram may contain 0..N complete RS-422 frames.
+            # A fresh framer per datagram keeps message boundaries clean.
+            framer = Rs422Framer()
+            inner_packets = framer.feed(data)
+            if not inner_packets:
+                log.debug(
+                    "RS-422 frame incomplete (%d bytes) from %s", len(data), addr
+                )
+                return
+            ts = time.time()
+            for inner in inner_packets:
+                try:
+                    await self._emit(inner, ts)
+                except Exception:
+                    log.exception("sink failed for EBOX frame from %s", addr)
+            return
 
-        We use a fresh StreamDepacketizer per datagram for strict
-        message-boundary alignment. This avoids desync if a sender
-        ever truncates a frame mid-stream.
-        """
-        # Too small to contain our 7-byte header + 2-byte CRC
+        # Non-EBOX path (unchanged)
         if len(data) < 9:
             log.debug("dropping short datagram (%d bytes) from %s", len(data), addr)
             return
-
-        # dp = StreamDepacketizer()
-        # inside _on_datagram:
-        dp = StreamDepacketizer(header_len=self.header_len) 
-        frames = dp.feed(data)
-
+        depkt = StreamDepacketizer(header_len=self._header_len)
+        frames = depkt.feed(data)
         if not frames:
-            # Data arrived but incomplete — held in dp.buf. For UDP we
-            # intentionally drop it: a partial datagram is a lost packet.
-            log.debug("incomplete frame in datagram from %s (%d bytes)", addr, len(data))
+            log.debug(
+                "incomplete frame in datagram from %s (%d bytes)", addr, len(data)
+            )
             return
-
         ts = time.time()
         for raw in frames:
             try:
