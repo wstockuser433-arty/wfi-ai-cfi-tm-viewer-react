@@ -27,10 +27,23 @@
 # The unit_sub_id + service + sub_service triple is the discriminator
 # (the APID is fixed for the entire EBOX at 0x2B).
 #
+# Payload sources:
+#   -d HEX   one fixed payload, repeated every round        (default DEADBEEF)
+#   -f FILE  payloads read from a text file, one hex string per line.
+#            Blank lines and '#' comments are ignored; whitespace inside a
+#            line is ignored. Each line is one ROUND: that payload is sent to
+#            every selected card, then the script moves to the next line.
+#            When the end of the file is reached that is one PASS.
+#            With -f, -n counts PASSES (default 1); -n 0 = loop the file forever.
+#            Without -f, -n counts rounds as before (default 10).
+#            -f and -d are mutually exclusive.
+#
 # Usage:
 #   ./send_ebox_tm.sh -H <host> [options]
 #   ./send_ebox_tm.sh -H 127.0.0.1 -n 5 -v
 #   ./send_ebox_tm.sh -H 127.0.0.1 -c CAM_ELEC -d DEADBEEF -n 20
+#   ./send_ebox_tm.sh -H 127.0.0.1 -f ebox_payloads.txt -c CAM_ELEC -v     # one pass
+#   ./send_ebox_tm.sh -H 127.0.0.1 -f ebox_payloads.txt -n 0               # forever
 #   ./send_ebox_tm.sh -l            # list all cards
 #
 # Options:
@@ -39,10 +52,12 @@
 #   -c  cards to send: 'all', or a comma-separated list of
 #       card names (CAM_ELEC, CDPM_P_AI, ...) or hex sub IDs (0x10)
 #   -s  sub-header: 'fast' | 'slow'         (default fast)
-#   -n  rounds, one packet per card per round, 0 = forever  (default 10)
+#   -n  rounds (no -f) or file passes (-f), 0 = forever
+#                                           (default 10 without -f, 1 with -f)
 #   -i  seconds between rounds             (default 1)
 #   -g  seconds between packets in a round (default 0)
 #   -d  source data as hex string          (default DEADBEEF)
+#   -f  file of payload hex strings, one per line
 #   -v  print each packet as hex
 #   -l  list known cards and exit
 #   -h  this help
@@ -91,6 +106,7 @@ EBOX_UNIT_ID=$((0x1A))
 EBOX_APID=$((0x2B))
 EBOX_VERSION=$((0x02))         # binary 010
 SEQ_FLAGS_UNSEGMENTED=$((0x03)) # binary 11
+MAX_PAYLOAD=237
 
 # ══════════════════════════════════════════════════════════════════════════
 # Defaults
@@ -101,9 +117,12 @@ PORT=9200
 CARDS_ARG="all"
 SUB_HDR="fast"
 COUNT=10
+COUNT_SET=0
 INTERVAL=1
 GAP=0
 DATA="DEADBEEF"
+DATA_SET=0
+PAYLOAD_FILE=""
 VERBOSE=0
 
 usage() {
@@ -114,11 +133,13 @@ Usage: $0 -H <host> [options]
   -c  cards to send: 'all' or comma-separated
       card names or hex sub IDs                  (default $CARDS_ARG)
   -s  sub-header: 'fast' | 'slow'                (default $SUB_HDR)
-  -n  rounds, one packet per card per round,
-      0 = forever                                (default $COUNT)
+  -n  rounds (no -f) or passes through the -f
+      file; 0 = forever                          (default $COUNT, or 1 with -f)
   -i  seconds between rounds                     (default $INTERVAL)
   -g  seconds between packets inside a round     (default $GAP)
   -d  source data as hex string                  (default $DATA)
+  -f  file of payload hex strings, one per line;
+      each line = one round (cannot be used with -d)
   -v  print each packet as hex
   -l  list the known cards and exit
   -h  this help
@@ -135,16 +156,17 @@ list_cards() {
   done
 }
 
-while getopts "H:p:c:s:n:i:g:d:vlh" opt; do
+while getopts "H:p:c:s:n:i:g:d:f:vlh" opt; do
   case $opt in
     H) HOST=$OPTARG ;;
     p) PORT=$OPTARG ;;
     c) CARDS_ARG=$OPTARG ;;
     s) SUB_HDR=$OPTARG ;;
-    n) COUNT=$OPTARG ;;
+    n) COUNT=$OPTARG; COUNT_SET=1 ;;
     i) INTERVAL=$OPTARG ;;
     g) GAP=$OPTARG ;;
-    d) DATA=$OPTARG ;;
+    d) DATA=$OPTARG; DATA_SET=1 ;;
+    f) PAYLOAD_FILE=$OPTARG ;;
     v) VERBOSE=1 ;;
     l) list_cards; exit 0 ;;
     h|*) usage ;;
@@ -159,10 +181,43 @@ case "${SUB_HDR,,}" in
   *) echo "Error: -s must be 'fast' or 'slow'" >&2; exit 1 ;;
 esac
 
-DATA=${DATA^^}
-[[ "$DATA" =~ ^([0-9A-F]{2})*$ ]] || { echo "Error: -d must be an even-length hex string" >&2; exit 1; }
-DATA_LEN=$(( ${#DATA} / 2 ))
-(( DATA_LEN <= 237 )) || { echo "Error: payload too large (max 237 bytes)" >&2; exit 1; }
+# ── Payload list ─────────────────────────────────────────────────────────
+PAYLOADS=()        # hex strings, in send order
+PAYLOAD_LINES=()   # source line number of each payload (file mode only)
+
+if [[ -n "$PAYLOAD_FILE" ]]; then
+  (( DATA_SET == 0 )) || { echo "Error: -f and -d cannot be used together" >&2; exit 1; }
+  [[ -r "$PAYLOAD_FILE" ]] || { echo "Error: cannot read payload file '$PAYLOAD_FILE'" >&2; exit 1; }
+
+  lineno=0
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    lineno=$(( lineno + 1 ))
+    line=${line%%#*}                 # strip comments
+    hex=${line//[[:space:]]/}        # strip all whitespace (incl. CR)
+    [[ -z "$hex" ]] && continue
+    hex=${hex^^}
+    if ! [[ "$hex" =~ ^([0-9A-F]{2})+$ ]]; then
+      echo "Error: $PAYLOAD_FILE line $lineno: not an even-length hex string" >&2
+      exit 1
+    fi
+    if (( ${#hex} / 2 > MAX_PAYLOAD )); then
+      echo "Error: $PAYLOAD_FILE line $lineno: payload is $(( ${#hex} / 2 )) bytes (max $MAX_PAYLOAD)" >&2
+      exit 1
+    fi
+    PAYLOADS+=("$hex")
+    PAYLOAD_LINES+=("$lineno")
+  done < "$PAYLOAD_FILE"
+
+  (( ${#PAYLOADS[@]} > 0 )) || { echo "Error: no payloads found in '$PAYLOAD_FILE'" >&2; exit 1; }
+  # In file mode the default is a single pass through the file
+  (( COUNT_SET )) || COUNT=1
+else
+  DATA=${DATA^^}
+  [[ "$DATA" =~ ^([0-9A-F]{2})*$ ]] || { echo "Error: -d must be an even-length hex string" >&2; exit 1; }
+  (( ${#DATA} / 2 <= MAX_PAYLOAD )) || { echo "Error: payload too large (max $MAX_PAYLOAD bytes)" >&2; exit 1; }
+  PAYLOADS=("$DATA")
+  PAYLOAD_LINES=(0)
+fi
 
 # Resolve a card token (name or 0xHEX or decimal) into its CARD_KEY
 resolve_card() {
@@ -217,6 +272,7 @@ checksum8() {
 declare -A SEQ=()      # per-card sequence counter (14-bit, wraps at 0x3FFF)
 
 sent=0
+CUR_SRC_LINE=0         # file line of the payload currently being sent
 
 send_packet() {
   local card=$1
@@ -276,7 +332,9 @@ send_packet() {
     local inner_bytes=$(( ${#inner} / 2 ))
     printf '[%d] %-14s  sub=0x%02X svc=0x%02X subsvc=0x%02X  seq=%-5d  ' \
       "$sent" "$card" "$sub_id" "$svc" "$subsvc" "$seq"
-    printf 'inner=%d B, frame=%d B\n' "$inner_bytes" "$frame_bytes"
+    printf 'payload=%d B' "$(( ${#DATA} / 2 ))"
+    if [[ -n "$PAYLOAD_FILE" ]]; then printf ' (file line %d)' "$CUR_SRC_LINE"; fi
+    printf '  inner=%d B, frame=%d B\n' "$inner_bytes" "$frame_bytes"
     printf '        frame: %s\n' "$frame"
   fi
 
@@ -285,17 +343,38 @@ send_packet() {
 
 # ══════════════════════════════════════════════════════════════════════════
 # Main loop
+#   round = one payload sent to every selected card
+#   pass  = every payload in the list sent once (= the whole file with -f)
+#   Without -f the list holds one payload, so a pass is one round and
+#   -n keeps its original meaning (number of rounds).
 # ══════════════════════════════════════════════════════════════════════════
 
 round=0
+pass=0
+n_payloads=${#PAYLOADS[@]}
+
 while :; do
-  for card in "${CARDS[@]}"; do
-    send_packet "$card"
-    if [[ "$GAP" != "0" ]]; then sleep "$GAP"; fi
+  pass=$(( pass + 1 ))
+  for (( idx = 0; idx < n_payloads; idx++ )); do
+    DATA=${PAYLOADS[$idx]}
+    CUR_SRC_LINE=${PAYLOAD_LINES[$idx]}
+
+    for card in "${CARDS[@]}"; do
+      send_packet "$card"
+      if [[ "$GAP" != "0" ]]; then sleep "$GAP"; fi
+    done
+    round=$(( round + 1 ))
+
+    # Finished the last payload of the last requested pass → stop (no trailing sleep)
+    if (( COUNT > 0 && pass >= COUNT && idx == n_payloads - 1 )); then
+      break 2
+    fi
+    sleep "$INTERVAL"
   done
-  round=$(( round + 1 ))
-  if (( COUNT > 0 && round >= COUNT )); then break; fi
-  sleep "$INTERVAL"
 done
 
-echo "Sent $sent EBOX TM packet(s) ($round round(s) × ${#CARDS[@]} card(s)) to ${HOST}:${PORT}/udp"
+if [[ -n "$PAYLOAD_FILE" ]]; then
+  echo "Sent $sent EBOX TM packet(s) ($round round(s), $pass pass(es) of ${n_payloads} payload(s) × ${#CARDS[@]} card(s)) to ${HOST}:${PORT}/udp"
+else
+  echo "Sent $sent EBOX TM packet(s) ($round round(s) × ${#CARDS[@]} card(s)) to ${HOST}:${PORT}/udp"
+fi

@@ -94,8 +94,30 @@ export const useTelemetry = create<TelemetryState>((set) => ({
 
   setLink: (link) => set((s) => (s.link === link ? s : { link })),
 
-  setMeta: (meta) => set({ meta }),
+  setMeta: (raw) => {
+    // Enrich each card with an `apid` alias for `unit_sub_id`, so that
+    // every consumer can key off `card.apid` uniformly — the decoder
+    // sets packet.apid = unit_sub_id, so the two must match.
+    if (!raw?.cards) {
+      set({ meta: raw });
+      return;
+    }
 
+    const cards: Record<string, any> = {};
+    for (const [key, card] of Object.entries(raw.cards)) {
+      cards[key] = {
+        ...(card as any),
+        apid: (card as any).apid ?? (card as any).unit_sub_id,
+      };
+    }
+
+    set({
+      meta: {
+        ...raw,
+        cards,
+      } as any,
+    });
+  },
   clearAlarms: () => set((s) => (s.alarms.length === 0 ? s : { alarms: [] })),
 
   reset: () =>
