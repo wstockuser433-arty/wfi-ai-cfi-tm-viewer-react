@@ -1,3 +1,5 @@
+cd /home/hassan/Documents/Hassan/scc-work/wfi-ai-cfi-tm-viewer-react-oem-packets/docs/eth-setup-rel
+
 chmod +x send_ebox_tm.sh
 
 # one pass through the file, local

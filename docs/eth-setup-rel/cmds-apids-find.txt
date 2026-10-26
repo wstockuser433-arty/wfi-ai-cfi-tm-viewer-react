@@ -1,0 +1,8 @@
+curl -s http://localhost:8000/api/meta | python -c "
+import sys, json
+m = json.load(sys.stdin)
+print(f'{\"CARD\":14s} {\"APID\":8s} {\"SUB_ID\":8s} {\"SVC\":6s} {\"SUBSVC\":7s} {\"SUBSYSTEM\":10s}')
+print('-' * 60)
+for a in m['apids']:
+    print(f'{a[\"card\"]:14s} 0x{a[\"apid\"]:03X}   0x{a[\"unit_sub_id\"]:02X}     0x{a[\"service\"]:02X}   0x{a[\"subservice\"]:02X}     {a[\"subsystem\"]}')
+"
