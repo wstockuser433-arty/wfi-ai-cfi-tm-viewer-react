@@ -10,3 +10,6 @@ chmod +x send_ebox_tm.sh
 
 # another PC: only the host changes
 ./send_ebox_tm.sh -H <OTHER_PC_IP> -f ebox_payloads.txt -n 0
+
+
+./send_ebox_tm-limits-wali.sh -H 127.0.0.1 -y /home/hassan/Documents/Hassan/scc-work/wfi-ai-cfi-tm-viewer-react-oem-packets/backend/app/tm_dictionary/ebox.yaml -n 0 -v
