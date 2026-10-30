@@ -1,30 +1,35 @@
-import { X, Monitor, Moon, Sun, RotateCcw, Server, Check } from "lucide-react";
+import { X, Sun, Moon, Monitor, Check, RotateCcw, Server } from "lucide-react";
 import { useEffect } from "react";
-import { useSettings, type ThemeMode } from "@/store/settingsStore";
+import { useSettings } from "@/store/settingsStore";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 
-const { theme, setTheme, serial, fetchSerial, updateSerial, serialError } = useSettings();
-
-useEffect(() => {
-  fetchSerial();   // load once on mount
-}, [fetchSerial]);
+const THEMES = [
+  { value: "light"  as const, label: "Light",  Icon: Sun,     hint: "Daylight — Clean Clinical palette" },
+  { value: "dark"   as const, label: "Dark",   Icon: Moon,    hint: "Night-shift friendly" },
+  { value: "system" as const, label: "System", Icon: Monitor, hint: "Follow OS preference" },
+];
 
 interface Props {
   open: boolean;
   onClose: () => void;
 }
 
-const THEMES: { value: ThemeMode; label: string; Icon: typeof Sun; hint: string }[] = [
-  { value: "light",  label: "Light",  Icon: Sun,     hint: "Daylight — Clean Clinical palette" },
-  { value: "dark",   label: "Dark",   Icon: Moon,    hint: "Night-shift friendly" },
-  { value: "system", label: "System", Icon: Monitor, hint: "Follow OS preference" },
-];
-
 export function SettingsDrawer({ open, onClose }: Props) {
-  const { theme, setTheme, api, setApi, reset } = useSettings();
+  const {
+    theme,
+    setTheme,
+    api,
+    setApi,
+    serial,
+    fetchSerial,
+    updateSerial,
+    serialError,
+    reset,
+  } = useSettings();
 
-  // Close on Escape
+  useEffect(() => { fetchSerial(); }, [fetchSerial]);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -32,7 +37,6 @@ export function SettingsDrawer({ open, onClose }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  // Lock body scroll while open
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;

@@ -116,7 +116,7 @@ export function StatusBar() {
           </div>
 
           <div className="flex items-center gap-1 pl-4 border-l border-white/5">
-            // In the tools group:
+            {/* In the tools group: */}
             <button
               onClick={() => setLogsOpen(true)}
               className="p-1.5 hover:bg-white/5 rounded"

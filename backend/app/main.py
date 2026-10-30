@@ -13,8 +13,6 @@ Startup sequence (in lifespan):
 Shutdown sequence (after yield):
   1. Stop all ingestion sources
 """
-from .logging_config import setup_logging
-setup_logging()   # must be called before any other logging happens
 
 from __future__ import annotations
 
@@ -22,6 +20,11 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
+# ─── 1. Logging setup MUST happen before any other module uses logging ───
+from .logging_config import setup_logging
+setup_logging()
+
+# ─── 2. Rest of the imports ─────────────────────────────────────────────
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -30,32 +33,25 @@ from .db.postgres import SessionLocal, init_db
 from .db.redis_client import get_redis
 from .schemas.packet import DecodedPacket
 from .tm_service.ingestion.manager import IngestionManager
-from .tm_service.inspector.factory import get_decoder        # ⭐ changed
+from .tm_service.ingestion.serial_config import get_serial_config
+from .tm_service.inspector.factory import get_decoder
 from .tm_service.storage.writer import StorageWriter
 
-# Routers
 from .api.routes_meta import router as meta_router
 from .api.routes_packets import router as packets_router
 from .api.routes_history import router as history_router
 from .api.routes_alarms import router as alarms_router
 from .api.routes_upload import router as upload_router
 from .api.routes_links import router as links_router
-from .api.ws_telemetry import router as ws_router
-from .api.ws_logs import router as ws_logs_router
 from .api.routes_logs import router as logs_router
 from .api.routes_settings import router as settings_router
-
-
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s — %(message)s",
-)
+from .api.ws_telemetry import router as ws_router
+from .api.ws_logs import router as ws_logs_router
 
 log = logging.getLogger(__name__)
 
 manager: IngestionManager | None = None
-decoder = None      # ⭐ module-level so on_packet can use it
+decoder = None
 
 
 # ---------------------------------------------------------------------- #
