@@ -12,19 +12,29 @@ import { LivePage } from "./pages/LivePage";
 import { AlarmsPage } from "./pages/AlarmsPage";
 import { TrendsPage } from "./pages/TrendsPage";
 import { StoragePage } from "./pages/StoragePage";
-import { InspectorPage } from "./pages/InspectorPage";  // optional
-// import { PlaybackPage } from "./pages/PlaybackPage";    // optional
-// import { LinksPage } from "./pages/LinksPage";          // optional
+import { InspectorPage } from "./pages/InspectorPage";
+// import { PlaybackPage } from "./pages/PlaybackPage";
+// import { LinksPage } from "./pages/LinksPage";
 import { LogsPopup } from "./components/logs/LogsPopup";
 
 
 export default function App() {
   useTheme();  // applies theme to <html> and listens for OS changes
   useMeta();
-    
-  const wsUrl = useSettings((s) => s.api.wsUrl);  // live updates if user changes settings
+
+  const wsUrl = useSettings((s) => s.api.wsUrl);
+  const fetchSerial = useSettings((s) => s.fetchSerial);   // ⭐ NEW
+
   useTelemetryStream(wsUrl);
-  
+
+  // ⭐ NEW — load the current serial/transport config from the backend
+  // once on mount. This syncs the settings drawer with serial_config.json
+  // so the UI knows whether the backend is currently in Ethernet or
+  // Serial mode as soon as the page loads.
+  useEffect(() => {
+    fetchSerial();
+  }, [fetchSerial]);
+
   const page = useUiStore((s) => s.activePage);
   const setPage = useUiStore((s) => s.setPage);
 

@@ -65,7 +65,18 @@ export const useSettings = create<SettingsState>()(
       setApi: (patch) => set((s) => ({ api: { ...s.api, ...patch } })),
 
       // ─── Serial / transport (new) ───────────────────────────
-      serial: null,
+            // ─── Serial / transport (new) ───────────────────────────
+      serial: {
+        transport: "ethernet",
+        port: "/dev/ttyUSB0",
+        baudrate: 115200,
+        bytesize: 8,
+        parity: "N",
+        stopbits: 1,
+        flow_control: "none",
+        timeout_s: 0.1,
+        read_chunk: 4096,
+      },
       serialSaving: false,
       serialError: null,
 
@@ -83,22 +94,34 @@ export const useSettings = create<SettingsState>()(
       updateSerial: async (patch) => {
         const current = get().serial;
         if (!current) return;
+
         const merged = { ...current, ...patch };
-        set({ serialSaving: true, serialError: null });
+
+        // 1. Optimistic UI update — reflect the click instantly
+        set({ serial: merged, serialSaving: true, serialError: null });
+
         try {
           const r = await fetch(`${API_BASE}/api/settings/serial`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(merged),
           });
+
           if (!r.ok) {
             const body = await r.json().catch(() => ({}));
             throw new Error(body.detail ?? `HTTP ${r.status}`);
           }
+
+          // 2. Overwrite with the canonical saved config
           const saved = (await r.json()) as SerialConfig;
           set({ serial: saved, serialSaving: false });
         } catch (e) {
-          set({ serialSaving: false, serialError: String(e) });
+          // 3. On error, roll back to the previous state
+          set({
+            serial: current,
+            serialSaving: false,
+            serialError: String(e),
+          });
         }
       },
 

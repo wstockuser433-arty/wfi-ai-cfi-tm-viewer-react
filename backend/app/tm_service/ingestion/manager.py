@@ -70,22 +70,24 @@ class IngestionManager:
     # ------------------------------------------------------------------ #
     async def apply_transport(self, transport: str) -> None:
         """Switch between 'ethernet' and 'serial' modes at runtime."""
-        cfg = get_serial_config()
-        if transport == "serial":
-            await self.stop_ethernet()
-            await self.start_serial()
-        elif transport == "ethernet":
-            await self.stop_serial()
-            from ...config import settings
-            await self.start_ethernet(
-                settings.tm_listen_host,
-                settings.tm_listen_port,
-                9200,
-            )
-        else:
-            log.warning("Unknown transport %r; ignoring", transport)
-            return
-        log.info("Ingestion transport set to %s", transport)
+        try:
+            if transport == "serial":
+                await self.stop_ethernet()
+                await self.start_serial()
+            elif transport == "ethernet":
+                await self.stop_serial()
+                from ...config import settings
+                await self.start_ethernet(
+                    settings.tm_listen_host,
+                    settings.tm_listen_port,
+                    9200,
+                )
+            else:
+                log.warning("Unknown transport %r; ignoring", transport)
+                return
+            log.info("Ingestion transport set to %s", transport)
+        except Exception:
+            log.exception("Failed to switch transport to %s", transport)
 
     # ------------------------------------------------------------------ #
     @staticmethod
