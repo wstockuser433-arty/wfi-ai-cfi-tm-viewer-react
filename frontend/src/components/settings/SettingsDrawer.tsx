@@ -1,4 +1,4 @@
-import { X, Sun, Moon, Monitor, Check, RotateCcw, Server } from "lucide-react";
+import { X, Sun, Moon, Monitor, Check, RotateCcw, Server, CircleDot } from "lucide-react";
 import { useEffect } from "react";
 import { useSettings } from "@/store/settingsStore";
 import { Button } from "../ui/button";
@@ -28,8 +28,21 @@ export function SettingsDrawer({ open, onClose }: Props) {
     reset,
   } = useSettings();
 
-  useEffect(() => { fetchSerial(); }, [fetchSerial]);
+  // Load config when the drawer opens
+  useEffect(() => {
+    if (open) fetchSerial();
+  }, [open, fetchSerial]);
 
+  // Poll for status updates every 2s while in serial mode
+  useEffect(() => {
+    if (!open || serial?.transport !== "serial") return;
+    const id = setInterval(() => {
+      fetchSerial();
+    }, 2000);
+    return () => clearInterval(id);
+  }, [open, serial?.transport, fetchSerial]);
+
+  // Close on Escape
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -37,6 +50,7 @@ export function SettingsDrawer({ open, onClose }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  // Lock body scroll
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -58,7 +72,7 @@ export function SettingsDrawer({ open, onClose }: Props) {
       {/* Drawer */}
       <aside
         className={cn(
-          "fixed top-0 right-0 z-50 h-full w-[420px] max-w-[92vw]",
+          "fixed top-0 right-0 z-50 h-full w-[440px] max-w-[92vw]",
           "glass-strong border-l border-white/10 shadow-2xl",
           "flex flex-col",
           "animate-[slideIn_.18s_ease-out]"
@@ -78,7 +92,7 @@ export function SettingsDrawer({ open, onClose }: Props) {
             className="p-1.5 hover:bg-white/5 rounded"
             aria-label="Close settings"
           >
-            <X className="w-4 h-4 text-muted" />
+            <X className="w-4 h-4 text-tertiary" />
           </button>
         </div>
 
@@ -86,10 +100,9 @@ export function SettingsDrawer({ open, onClose }: Props) {
         <div className="flex-1 overflow-auto p-4 space-y-6">
           {/* ─── Appearance ───────────────────────────────── */}
           <section>
-            <h3 className="text-[11px] uppercase tracking-widest text-muted mb-3">
+            <h3 className="text-[11px] uppercase tracking-widest text-tertiary mb-3">
               Appearance
             </h3>
-
             <div className="space-y-2">
               {THEMES.map(({ value, label, Icon, hint }) => {
                 const active = theme === value;
@@ -111,8 +124,6 @@ export function SettingsDrawer({ open, onClose }: Props) {
                       onChange={() => setTheme(value)}
                       className="sr-only"
                     />
-
-                    {/* Custom radio dot */}
                     <span
                       className={cn(
                         "mt-0.5 shrink-0 w-4 h-4 rounded-full border flex items-center justify-center transition-colors",
@@ -123,17 +134,15 @@ export function SettingsDrawer({ open, onClose }: Props) {
                     >
                       {active && <Check className="w-2.5 h-2.5 text-accent" strokeWidth={3} />}
                     </span>
-
                     <Icon
                       className={cn(
                         "mt-0.5 w-4 h-4 shrink-0",
-                        active ? "text-accent" : "text-muted"
+                        active ? "text-accent" : "text-tertiary"
                       )}
                     />
-
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm text-slate-100">{label}</div>
-                      <div className="text-[11px] text-muted mt-0.5">{hint}</div>
+                      <div className="text-sm text-primary">{label}</div>
+                      <div className="text-[11px] text-tertiary mt-0.5">{hint}</div>
                     </div>
                   </label>
                 );
@@ -143,10 +152,9 @@ export function SettingsDrawer({ open, onClose }: Props) {
 
           {/* ─── Backend connection ──────────────────────── */}
           <section>
-            <h3 className="text-[11px] uppercase tracking-widest text-muted mb-3">
+            <h3 className="text-[11px] uppercase tracking-widest text-tertiary mb-3">
               Backend Connection
             </h3>
-
             <div className="space-y-3">
               <Field
                 label="API base URL"
@@ -160,35 +168,13 @@ export function SettingsDrawer({ open, onClose }: Props) {
                 onChange={(v) => setApi({ wsUrl: v })}
                 placeholder="ws://localhost:8000/ws/telemetry"
               />
-              <div className="text-[11px] text-muted leading-relaxed">
-                Changing these requires a page reload to reconnect. The
-                values here override the build-time defaults.
+              <div className="text-[11px] text-tertiary leading-relaxed">
+                Changing these requires a page reload to reconnect.
               </div>
             </div>
           </section>
 
-          {/* ─── Info ────────────────────────────────────── */}
-          <section>
-            <h3 className="text-[11px] uppercase tracking-widest text-muted mb-3">
-              About
-            </h3>
-            <div className="text-[11px] text-muted space-y-1.5 leading-relaxed">
-              <div className="flex justify-between">
-                <span>Application</span>
-                <span className="mono text-slate-200">WFI-AI-CFI TM Viewer</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Version</span>
-                <span className="mono text-slate-200">0.1.0</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Storage</span>
-                <span className="mono text-slate-200">localStorage</span>
-              </div>
-            </div>
-          </section>
-
-          {/* ─── Transport & Serial ─────────────────────────────────────── */}
+          {/* ─── Data Source (Transport + Serial) ────────── */}
           <section>
             <h3 className="text-[11px] uppercase tracking-widest text-tertiary mb-3">
               Data Source
@@ -236,11 +222,12 @@ export function SettingsDrawer({ open, onClose }: Props) {
               })}
             </div>
 
-            {/* Serial params — only when serial is selected */}
+            {/* Serial params — visible when serial is selected */}
             {serial?.transport === "serial" && (
               <div className="space-y-3 border-t border-white/5 pt-3">
                 <SerialField label="Port" value={serial.port}
-                  onChange={(v) => updateSerial({ port: v })} placeholder="/dev/ttyUSB0" />
+                  onChange={(v) => updateSerial({ port: v })}
+                  placeholder="/dev/ttyUSB0 or /tmp/ttyV1" />
 
                 <div className="grid grid-cols-2 gap-3">
                   <SerialField label="Baud rate" type="number" value={serial.baudrate}
@@ -260,7 +247,6 @@ export function SettingsDrawer({ open, onClose }: Props) {
                       { value: "S", label: "Space" },
                     ]}
                     onChange={(v) => updateSerial({ parity: v as any })} />
-
                   <SerialSelect label="Stop bits" value={String(serial.stopbits)}
                     options={[
                       { value: "1",   label: "1" },
@@ -268,7 +254,6 @@ export function SettingsDrawer({ open, onClose }: Props) {
                       { value: "2",   label: "2" },
                     ]}
                     onChange={(v) => updateSerial({ stopbits: Number(v) })} />
-
                   <SerialSelect label="Flow control" value={serial.flow_control}
                     options={[
                       { value: "none", label: "None" },
@@ -279,6 +264,31 @@ export function SettingsDrawer({ open, onClose }: Props) {
                     onChange={(v) => updateSerial({ flow_control: v as any })} />
                 </div>
 
+                {/* ⭐ Status indicator */}
+                <div className="flex items-center gap-2 pt-1 text-[11px]">
+                  <CircleDot
+                    className={cn(
+                      "w-3 h-3 shrink-0",
+                      serial.status === "open"  ? "text-accent-green" :
+                      serial.status === "error" ? "text-accent-red"   :
+                                                  "text-tertiary"
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "truncate",
+                      serial.status === "open"  ? "text-accent-green" :
+                      serial.status === "error" ? "text-accent-red"   :
+                                                  "text-tertiary"
+                    )}
+                    title={serial.last_error ?? undefined}
+                  >
+                    {serial.status === "open"  ? `Connected · ${serial.port}` :
+                     serial.status === "error" ? `Error: ${serial.last_error}` :
+                                                 "Idle — waiting for backend"}
+                  </span>
+                </div>
+
                 {serialError && (
                   <div className="text-[11px] text-accent-red bg-accent-red/5 border border-accent-red/20 rounded p-2">
                     {serialError}
@@ -286,6 +296,27 @@ export function SettingsDrawer({ open, onClose }: Props) {
                 )}
               </div>
             )}
+          </section>
+
+          {/* ─── Info ────────────────────────────────────── */}
+          <section>
+            <h3 className="text-[11px] uppercase tracking-widest text-tertiary mb-3">
+              About
+            </h3>
+            <div className="text-[11px] text-tertiary space-y-1.5 leading-relaxed">
+              <div className="flex justify-between">
+                <span>Application</span>
+                <span className="mono text-secondary">WFI-AI-CFI TM Viewer</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Version</span>
+                <span className="mono text-secondary">0.1.0</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Storage</span>
+                <span className="mono text-secondary">localStorage</span>
+              </div>
+            </div>
           </section>
         </div>
 
@@ -308,7 +339,6 @@ export function SettingsDrawer({ open, onClose }: Props) {
         </div>
       </aside>
 
-      {/* Slide-in keyframe */}
       <style>{`
         @keyframes slideIn {
           from { transform: translateX(24px); opacity: 0; }
@@ -320,11 +350,9 @@ export function SettingsDrawer({ open, onClose }: Props) {
 }
 
 // ─── Small local components ────────────────────────────────
+
 function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
+  label, value, onChange, placeholder,
 }: {
   label: string;
   value: string;
@@ -333,7 +361,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="text-[11px] text-muted block mb-1">{label}</span>
+      <span className="text-[11px] text-tertiary block mb-1">{label}</span>
       <input
         type="text"
         value={value}
@@ -348,9 +376,15 @@ function Field({
   );
 }
 
-function SerialField({ label, value, onChange, placeholder, type = "text" }:
-  { label: string; value: string | number; onChange: (v: string) => void;
-    placeholder?: string; type?: string }) {
+function SerialField({
+  label, value, onChange, placeholder, type = "text",
+}: {
+  label: string;
+  value: string | number;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+}) {
   return (
     <label className="block">
       <span className="text-[11px] text-tertiary block mb-1">{label}</span>
@@ -366,10 +400,14 @@ function SerialField({ label, value, onChange, placeholder, type = "text" }:
   );
 }
 
-function SerialSelect({ label, value, options, onChange }:
-  { label: string; value: string;
-    options: string[] | { value: string; label: string }[];
-    onChange: (v: string) => void }) {
+function SerialSelect({
+  label, value, options, onChange,
+}: {
+  label: string;
+  value: string;
+  options: string[] | { value: string; label: string }[];
+  onChange: (v: string) => void;
+}) {
   const opts = options.map((o) =>
     typeof o === "string" ? { value: o, label: o } : o
   );

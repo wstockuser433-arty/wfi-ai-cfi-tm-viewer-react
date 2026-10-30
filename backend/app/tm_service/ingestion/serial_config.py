@@ -25,17 +25,20 @@ TransportKind = Literal["ethernet", "serial"]
 @dataclass
 class SerialConfig:
     # Transport selection
-    transport: TransportKind = "ethernet"
-
-    # Serial parameters (per ICD: 115200 8N1)
-    port: str = "/dev/ttyUSB0"
+    transport: TransportKind = "serial"
+    port: str = "/tmp/ttyV1"
     baudrate: int = 115200
-    bytesize: int = 8         # 5 | 6 | 7 | 8
-    parity: str = "N"         # N | E | O | M | S
-    stopbits: float = 1.0     # 1.0 | 1.5 | 2.0
-    flow_control: str = "none"  # none | rtscts | xonxoff | dsrdtr
+    bytesize: int = 8
+    parity: str = "N"
+    stopbits: float = 1.0
+    flow_control: str = "none"
     timeout_s: float = 0.1
     read_chunk: int = 4096
+
+    # ─── Runtime status (not persisted) ────────────────────────────────
+    status: str = "idle"           # idle | open | error
+    last_error: str | None = None
+    last_error_at: float | None = None
 
     @classmethod
     def load(cls) -> "SerialConfig":
@@ -55,10 +58,10 @@ class SerialConfig:
 
     def save(self) -> None:
         CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        CONFIG_PATH.write_text(
-            json.dumps(asdict(self), indent=2, sort_keys=True),
-            encoding="utf-8",
-        )
+        data = asdict(self)
+        for k in ("status", "last_error", "last_error_at"):
+            data.pop(k, None)
+        CONFIG_PATH.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
         log.info("serial_config.json saved (%s mode, port=%s)",
                  self.transport, self.port)
 

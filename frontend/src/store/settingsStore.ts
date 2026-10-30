@@ -22,6 +22,10 @@ export interface SerialConfig {
   flow_control: "none" | "rtscts" | "xonxoff" | "dsrdtr";
   timeout_s: number;
   read_chunk: number;
+  // ─── runtime status from the backend ───
+  status: "idle" | "open" | "error";
+  last_error: string | null;
+  last_error_at: number | null;
 }
 
 export interface SettingsState {
@@ -33,7 +37,7 @@ export interface SettingsState {
   api: ApiConfig;
   setApi: (api: Partial<ApiConfig>) => void;
 
-  // Serial / transport (new)
+  // Serial / transport
   serial: SerialConfig | null;
   serialSaving: boolean;
   serialError: string | null;
@@ -51,6 +55,22 @@ const DEFAULT_API: ApiConfig = {
   wsUrl: "ws://localhost:8000/ws/telemetry",
 };
 
+const DEFAULT_SERIAL: SerialConfig = {
+  transport: "ethernet",
+  port: "/tmp/ttyV1",
+  baudrate: 115200,
+  bytesize: 8,
+  parity: "N",
+  stopbits: 1,
+  flow_control: "none",
+  timeout_s: 0.1,
+  read_chunk: 4096,
+  // Runtime status — initialized to idle; overwritten by fetchSerial()
+  status: "idle",
+  last_error: null,
+  last_error_at: null,
+};
+
 // ─── Store ───────────────────────────────────────────────────────────────
 
 export const useSettings = create<SettingsState>()(
@@ -64,19 +84,8 @@ export const useSettings = create<SettingsState>()(
       api: DEFAULT_API,
       setApi: (patch) => set((s) => ({ api: { ...s.api, ...patch } })),
 
-      // ─── Serial / transport (new) ───────────────────────────
-            // ─── Serial / transport (new) ───────────────────────────
-      serial: {
-        transport: "ethernet",
-        port: "/dev/ttyUSB0",
-        baudrate: 115200,
-        bytesize: 8,
-        parity: "N",
-        stopbits: 1,
-        flow_control: "none",
-        timeout_s: 0.1,
-        read_chunk: 4096,
-      },
+      // ─── Serial / transport ─────────────────────────────────
+      serial: DEFAULT_SERIAL,
       serialSaving: false,
       serialError: null,
 
@@ -85,7 +94,17 @@ export const useSettings = create<SettingsState>()(
           const r = await fetch(`${API_BASE}/api/settings/serial`);
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           const data = (await r.json()) as SerialConfig;
-          set({ serial: data, serialError: null });
+
+          // Backfill status fields if the backend doesn't send them yet
+          const merged: SerialConfig = {
+            ...DEFAULT_SERIAL,
+            ...data,
+            status: data.status ?? "idle",
+            last_error: data.last_error ?? null,
+            last_error_at: data.last_error_at ?? null,
+          };
+
+          set({ serial: merged, serialError: null });
         } catch (e) {
           set({ serialError: String(e) });
         }
@@ -115,8 +134,14 @@ export const useSettings = create<SettingsState>()(
           // 2. Overwrite with the canonical saved config
           const saved = (await r.json()) as SerialConfig;
           set({ serial: saved, serialSaving: false });
+
+          // 3. Re-fetch shortly after to pick up any status change
+          //    (e.g. if the port failed to open, status → "error")
+          setTimeout(() => {
+            void get().fetchSerial();
+          }, 1000);
         } catch (e) {
-          // 3. On error, roll back to the previous state
+          // 4. On error, roll back to the previous state
           set({
             serial: current,
             serialSaving: false,
@@ -130,23 +155,29 @@ export const useSettings = create<SettingsState>()(
         set({
           theme: "dark",
           api: DEFAULT_API,
-          serial: null,
+          serial: DEFAULT_SERIAL,
           serialSaving: false,
           serialError: null,
         }),
     }),
     {
       name: "tm-viewer-settings",
-      version: 2,             // bumped from 1 → 2 because we added fields
-      // Only persist the user-facing settings — not runtime flags
+      version: 3,   // bumped to 3 — previous data lacked status fields
       partialize: (state) => ({
         theme: state.theme,
         api: state.api,
+        // Don't persist `serial` — the backend is the source of truth
       }),
-      // Migrate from v1 → v2 cleanly
       migrate: (persisted: any, version: number) => {
         if (version < 2) {
-          // v1 had theme + api only. Preserve them; serial starts null.
+          return {
+            theme: persisted?.theme ?? "dark",
+            api: persisted?.api ?? DEFAULT_API,
+          };
+        }
+        if (version < 3) {
+          // v2 stored serial without status fields — clear it so the
+          // app re-fetches from the backend
           return {
             theme: persisted?.theme ?? "dark",
             api: persisted?.api ?? DEFAULT_API,

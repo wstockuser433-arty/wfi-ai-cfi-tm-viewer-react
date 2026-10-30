@@ -354,17 +354,100 @@ if [[ ! -e "$SERIAL_PORT" ]]; then
     exit 1
 fi
 
-# ══════════════════════════════════════════════════════════════════════════
-# (Copy the payload parsing logic from -s, -n, -d, -f, -y, and resolve_card
-#  logic from send_ebox_tm.sh here. Everything from lines 300 to 440)
-# ══════════════════════════════════════════════════════════════════════════
+case "${SUB_HDR,,}" in
+  fast) SUB_HDR_BYTE=1 ;;
+  slow) SUB_HDR_BYTE=2 ;;
+  *) echo "Error: -s must be 'fast' or 'slow'" >&2; exit 1 ;;
+esac
 
-# ... [PASTE PAYLOAD LOADING LOGIC HERE] ...
-# ... [PASTE resolve_card, CARDS array building, -y validation HERE] ...
+# ── Payload list ─────────────────────────────────────────────────────────
+PAYLOADS=()        # hex strings, in send order
+PAYLOAD_LINES=()   # source line number of each payload (file mode only)
 
-# ══════════════════════════════════════════════════════════════════════════
-# Serial Port Setup (using stty)
-# ══════════════════════════════════════════════════════════════════════════
+if [[ -n "$YAML_FILE" ]]; then
+  (( DATA_SET == 0 )) || { echo "Error: -y and -d cannot be used together" >&2; exit 1; }
+  [[ -z "$PAYLOAD_FILE" ]] || { echo "Error: -y and -f cannot be used together" >&2; exit 1; }
+  [[ -r "$YAML_FILE" ]] || { echo "Error: cannot read yaml file '$YAML_FILE'" >&2; exit 1; }
+  command -v python3 >/dev/null 2>&1 || { echo "Error: -y needs python3" >&2; exit 1; }
+  # payloads are generated per card inside send_packet; one placeholder = one round
+  PAYLOADS=("")
+  PAYLOAD_LINES=(0)
+elif [[ -n "$PAYLOAD_FILE" ]]; then
+  (( DATA_SET == 0 )) || { echo "Error: -f and -d cannot be used together" >&2; exit 1; }
+  [[ -r "$PAYLOAD_FILE" ]] || { echo "Error: cannot read payload file '$PAYLOAD_FILE'" >&2; exit 1; }
+
+  lineno=0
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    lineno=$(( lineno + 1 ))
+    line=${line%%#*}                 # strip comments
+    hex=${line//[[:space:]]/}        # strip all whitespace (incl. CR)
+    [[ -z "$hex" ]] && continue
+    hex=${hex^^}
+    if ! [[ "$hex" =~ ^([0-9A-F]{2})+$ ]]; then
+      echo "Error: $PAYLOAD_FILE line $lineno: not an even-length hex string" >&2
+      exit 1
+    fi
+    if (( ${#hex} / 2 > MAX_PAYLOAD )); then
+      echo "Error: $PAYLOAD_FILE line $lineno: payload is $(( ${#hex} / 2 )) bytes (max $MAX_PAYLOAD)" >&2
+      exit 1
+    fi
+    PAYLOADS+=("$hex")
+    PAYLOAD_LINES+=("$lineno")
+  done < "$PAYLOAD_FILE"
+
+  (( ${#PAYLOADS[@]} > 0 )) || { echo "Error: no payloads found in '$PAYLOAD_FILE'" >&2; exit 1; }
+  # In file mode the default is a single pass through the file
+  (( COUNT_SET )) || COUNT=1
+else
+  DATA=${DATA^^}
+  [[ "$DATA" =~ ^([0-9A-F]{2})*$ ]] || { echo "Error: -d must be an even-length hex string" >&2; exit 1; }
+  (( ${#DATA} / 2 <= MAX_PAYLOAD )) || { echo "Error: payload too large (max $MAX_PAYLOAD bytes)" >&2; exit 1; }
+  PAYLOADS=("$DATA")
+  PAYLOAD_LINES=(0)
+fi
+
+# Resolve a card token (name or 0xHEX or decimal) into its CARD_KEY
+resolve_card() {
+  local tok=$1 key
+  for key in "${!CARD_SUBID[@]}"; do
+    if [[ "$key" == "${tok^^}" ]]; then echo "$key"; return 0; fi
+  done
+  # try hex or decimal sub_id
+  if [[ "$tok" =~ ^0[xX][0-9A-Fa-f]+$ || "$tok" =~ ^(0|[1-9][0-9]*)$ ]]; then
+    local n=$(( tok ))
+    for key in "${!CARD_SUBID[@]}"; do
+      if (( CARD_SUBID[$key] == n )); then echo "$key"; return 0; fi
+    done
+  fi
+  echo "Error: unknown card '$tok' (use -l to list known cards)" >&2
+  return 1
+}
+
+CARDS=()
+IFS=',' read -ra TOKENS <<<"$CARDS_ARG"
+for tok in "${TOKENS[@]}"; do
+  tok=${tok//[[:space:]]/}
+  [[ -z "$tok" ]] && continue
+  if [[ "${tok,,}" == "all" ]]; then
+    for entry in "${ALL_CARDS[@]}"; do
+      IFS='|' read -r key _ _ _ _ <<<"$entry"
+      CARDS+=("$key")
+    done
+  else
+    CARDS+=("$(resolve_card "$tok")")
+  fi
+done
+(( ${#CARDS[@]} > 0 )) || { echo "Error: no cards selected" >&2; exit 1; }
+
+# With -y: make sure the yaml and this script agree, and that every generated
+# value really stays inside its limits, before a single packet is sent.
+if [[ -n "$YAML_FILE" ]]; then
+  triples=()
+  for card in "${CARDS[@]}"; do
+    triples+=("${card}:${CARD_SUBID[$card]}:${CARD_SVC[$card]}:${CARD_SUBSVC[$card]}")
+  done
+  python3 -I -c "$PY_GEN" check "$YAML_FILE" "${triples[@]}"
+fi
 
 # Configure the serial port for raw binary transmission
 if ! stty -F "$SERIAL_PORT" "$BAUD" cs8 -cstopb -parenb raw -echo; then

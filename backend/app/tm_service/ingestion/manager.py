@@ -6,6 +6,7 @@ from .tcp_source import TcpSource
 from .udp_source import UdpSource
 from .serial_source import SerialSource
 from .serial_config import get_serial_config
+from ...config import settings
 
 log = logging.getLogger(__name__)
 
@@ -69,25 +70,26 @@ class IngestionManager:
 
     # ------------------------------------------------------------------ #
     async def apply_transport(self, transport: str) -> None:
-        """Switch between 'ethernet' and 'serial' modes at runtime."""
-        try:
-            if transport == "serial":
-                await self.stop_ethernet()
-                await self.start_serial()
-            elif transport == "ethernet":
-                await self.stop_serial()
-                from ...config import settings
+        if transport == "serial":
+            await self.stop_ethernet()
+            await self.start_serial()
+            # If serial didn't come up, fall back to ethernet immediately
+            from .serial_config import get_serial_config
+            if get_serial_config().status == "error":
+                log.warning("Serial failed; falling back to ethernet")
                 await self.start_ethernet(
-                    settings.tm_listen_host,
-                    settings.tm_listen_port,
-                    9200,
+                    settings.tm_listen_host, settings.tm_listen_port, 9200,
                 )
-            else:
-                log.warning("Unknown transport %r; ignoring", transport)
-                return
-            log.info("Ingestion transport set to %s", transport)
-        except Exception:
-            log.exception("Failed to switch transport to %s", transport)
+                # Do not overwrite the user's requested transport — let them see the error
+        elif transport == "ethernet":
+            await self.stop_serial()
+            await self.start_ethernet(
+                settings.tm_listen_host, settings.tm_listen_port, 9200,
+            )
+        else:
+            log.warning("Unknown transport %r", transport)
+            return
+        log.info("Ingestion transport set to %s", transport)
 
     # ------------------------------------------------------------------ #
     @staticmethod

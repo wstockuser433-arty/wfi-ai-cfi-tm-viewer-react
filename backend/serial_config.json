@@ -3,9 +3,9 @@
   "bytesize": 8,
   "flow_control": "none",
   "parity": "N",
-  "port": "/dev/ttyUSB0",
+  "port": "/tmp/ttyV1",
   "read_chunk": 4096,
-  "stopbits": 1,
+  "stopbits": 1.0,
   "timeout_s": 0.1,
   "transport": "serial"
 }
