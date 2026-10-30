@@ -55,9 +55,7 @@ export function StatusBar() {
   }[link];
   const { Icon } = linkCfg;
 
-  function setLogsOpen(arg0: boolean): void {
-    throw new Error("Function not implemented.");
-  }
+  const setLogsOpen = useUiStore((s) => s.setLogsOpen);
 
   return (
     <>
