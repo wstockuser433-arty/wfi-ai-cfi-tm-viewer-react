@@ -15,6 +15,7 @@ import { StoragePage } from "./pages/StoragePage";
 import { InspectorPage } from "./pages/InspectorPage";  // optional
 // import { PlaybackPage } from "./pages/PlaybackPage";    // optional
 // import { LinksPage } from "./pages/LinksPage";          // optional
+import { LogsPopup } from "./components/logs/LogsPopup";
 
 
 export default function App() {
@@ -52,6 +53,7 @@ export default function App() {
             {page === "inspector" && <InspectorPage />}
           </ErrorBoundary>
         </main>
+        <LogsPopup />
       </div>
     </div>
   );

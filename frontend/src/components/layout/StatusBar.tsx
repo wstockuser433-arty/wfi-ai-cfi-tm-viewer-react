@@ -12,6 +12,7 @@ import { useTelemetry } from "@/store/telemetryStore";
 import { useUiStore } from "@/store/uiStore";
 import { Badge } from "../ui/badge";
 import { SettingsDrawer } from "../settings/SettingsDrawer";
+import { ScrollText } from "lucide-react";   // lucide icon
 
 const MISSION_T0 = Date.now();
 
@@ -53,6 +54,10 @@ export function StatusBar() {
     disconnected: { Icon: WifiOff, color: "text-accent-red",   label: "OFFLINE",    variant: "crit" as const },
   }[link];
   const { Icon } = linkCfg;
+
+  function setLogsOpen(arg0: boolean): void {
+    throw new Error("Function not implemented.");
+  }
 
   return (
     <>
@@ -111,6 +116,15 @@ export function StatusBar() {
           </div>
 
           <div className="flex items-center gap-1 pl-4 border-l border-white/5">
+            // In the tools group:
+            <button
+              onClick={() => setLogsOpen(true)}
+              className="p-1.5 hover:bg-white/5 rounded"
+              aria-label="Open logs"
+              title="Logs"
+            >
+              <ScrollText className="w-4 h-4 text-tertiary" />
+            </button>
             <button
               className="p-1.5 hover-surface rounded"
               aria-label="Search"

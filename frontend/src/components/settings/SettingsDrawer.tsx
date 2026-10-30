@@ -4,6 +4,12 @@ import { useSettings, type ThemeMode } from "@/store/settingsStore";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 
+const { theme, setTheme, serial, fetchSerial, updateSerial, serialError } = useSettings();
+
+useEffect(() => {
+  fetchSerial();   // load once on mount
+}, [fetchSerial]);
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -177,6 +183,106 @@ export function SettingsDrawer({ open, onClose }: Props) {
               </div>
             </div>
           </section>
+
+          {/* ─── Transport & Serial ─────────────────────────────────────── */}
+          <section>
+            <h3 className="text-[11px] uppercase tracking-widest text-tertiary mb-3">
+              Data Source
+            </h3>
+
+            {/* Transport selector */}
+            <div className="space-y-2 mb-4">
+              {([
+                { value: "ethernet", label: "Ethernet (TCP + UDP)",
+                  hint: "TCP :9100 / UDP :9200" },
+                { value: "serial", label: "Serial RS-422",
+                  hint: "Direct hardware connection" },
+              ] as const).map(({ value, label, hint }) => {
+                const active = serial?.transport === value;
+                return (
+                  <label key={value}
+                    className={cn(
+                      "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                      active
+                        ? "border-accent/40 bg-accent/5"
+                        : "border-white/10 hover:bg-white/5"
+                    )}>
+                    <input
+                      type="radio"
+                      name="transport"
+                      value={value}
+                      checked={active}
+                      onChange={() => updateSerial({ transport: value })}
+                      className="sr-only"
+                    />
+                    <span
+                      className={cn(
+                        "mt-0.5 shrink-0 w-4 h-4 rounded-full border flex items-center justify-center",
+                        active ? "border-accent bg-accent/20" : "border-white/20"
+                      )}
+                    >
+                      {active && <Check className="w-2.5 h-2.5 text-accent" strokeWidth={3} />}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-primary">{label}</div>
+                      <div className="text-[11px] text-tertiary mt-0.5">{hint}</div>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+
+            {/* Serial params — only when serial is selected */}
+            {serial?.transport === "serial" && (
+              <div className="space-y-3 border-t border-white/5 pt-3">
+                <SerialField label="Port" value={serial.port}
+                  onChange={(v) => updateSerial({ port: v })} placeholder="/dev/ttyUSB0" />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <SerialField label="Baud rate" type="number" value={serial.baudrate}
+                    onChange={(v) => updateSerial({ baudrate: Number(v) })} />
+                  <SerialSelect label="Data bits" value={String(serial.bytesize)}
+                    options={["5", "6", "7", "8"]}
+                    onChange={(v) => updateSerial({ bytesize: Number(v) })} />
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <SerialSelect label="Parity" value={serial.parity}
+                    options={[
+                      { value: "N", label: "None" },
+                      { value: "E", label: "Even" },
+                      { value: "O", label: "Odd" },
+                      { value: "M", label: "Mark" },
+                      { value: "S", label: "Space" },
+                    ]}
+                    onChange={(v) => updateSerial({ parity: v as any })} />
+
+                  <SerialSelect label="Stop bits" value={String(serial.stopbits)}
+                    options={[
+                      { value: "1",   label: "1" },
+                      { value: "1.5", label: "1.5" },
+                      { value: "2",   label: "2" },
+                    ]}
+                    onChange={(v) => updateSerial({ stopbits: Number(v) })} />
+
+                  <SerialSelect label="Flow control" value={serial.flow_control}
+                    options={[
+                      { value: "none", label: "None" },
+                      { value: "rtscts", label: "RTS/CTS" },
+                      { value: "xonxoff", label: "XON/XOFF" },
+                      { value: "dsrdtr", label: "DSR/DTR" },
+                    ]}
+                    onChange={(v) => updateSerial({ flow_control: v as any })} />
+                </div>
+
+                {serialError && (
+                  <div className="text-[11px] text-accent-red bg-accent-red/5 border border-accent-red/20 rounded p-2">
+                    {serialError}
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
         </div>
 
         {/* Footer */}
@@ -234,6 +340,47 @@ function Field({
         autoCorrect="off"
         autoCapitalize="off"
       />
+    </label>
+  );
+}
+
+function SerialField({ label, value, onChange, placeholder, type = "text" }:
+  { label: string; value: string | number; onChange: (v: string) => void;
+    placeholder?: string; type?: string }) {
+  return (
+    <label className="block">
+      <span className="text-[11px] text-tertiary block mb-1">{label}</span>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full mono text-xs"
+        spellCheck={false}
+      />
+    </label>
+  );
+}
+
+function SerialSelect({ label, value, options, onChange }:
+  { label: string; value: string;
+    options: string[] | { value: string; label: string }[];
+    onChange: (v: string) => void }) {
+  const opts = options.map((o) =>
+    typeof o === "string" ? { value: o, label: o } : o
+  );
+  return (
+    <label className="block">
+      <span className="text-[11px] text-tertiary block mb-1">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full mono text-xs"
+      >
+        {opts.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
     </label>
   );
 }

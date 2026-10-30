@@ -14,6 +14,8 @@ interface UiState {
   activePage: Page;
   setMode: (m: UiState["mode"]) => void;
   setPage: (p: Page) => void;
+  logsOpen: boolean;
+  setLogsOpen: (open: boolean) => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -21,4 +23,6 @@ export const useUiStore = create<UiState>((set) => ({
   activePage: "dashboard",
   setMode: (mode) => set({ mode }),
   setPage: (activePage) => set({ activePage }),
+  logsOpen: false,
+  setLogsOpen: (open) => set({ logsOpen: open }),
 }));

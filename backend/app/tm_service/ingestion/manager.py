@@ -4,6 +4,8 @@ from typing import Any, Awaitable, Callable
 
 from .tcp_source import TcpSource
 from .udp_source import UdpSource
+from .serial_source import SerialSource
+from .serial_config import get_serial_config
 
 log = logging.getLogger(__name__)
 
@@ -15,28 +17,77 @@ class IngestionManager:
         self.on_packet = on_packet
         self.sources: list[Any] = []
         self.subscribers: set[asyncio.Queue] = set()
-        # Attached later by main.py so on_packet can call write_live/write_playback
         self.writer: Any = None
+        self._tcp: TcpSource | None = None
+        self._udp: UdpSource | None = None
+        self._serial: SerialSource | None = None
 
-    async def start_tcp(self, host: str, port: int) -> None:
-        src = TcpSource(host, port, self.on_packet)
-        self.sources.append(src)
-        # Run in background so start_tcp returns immediately
-        asyncio.create_task(self._run(src, f"TCP {host}:{port}"))
+    # ------------------------------------------------------------------ #
+    async def start_ethernet(self, host: str, tcp_port: int, udp_port: int) -> None:
+        """Start TCP + UDP sources. Safe to call when already running."""
+        if self._tcp is not None or self._udp is not None:
+            log.info("Ethernet sources already active; ignoring start_ethernet")
+            return
 
-    async def start_udp(
-        self,
-        host: str,
-        port: int,
-        *,
-        multicast: bool = False,
-        interface: str | None = None,
-    ) -> None:
-        src = UdpSource(host, port, self.on_packet,
-                        multicast=multicast, interface=interface)
-        self.sources.append(src)
-        asyncio.create_task(self._run(src, f"UDP {host}:{port}"))
+        self._tcp = TcpSource(host, tcp_port, self.on_packet)
+        self._udp = UdpSource(host, udp_port, self.on_packet)
+        self.sources.extend([self._tcp, self._udp])
+        asyncio.create_task(self._run(self._tcp, f"TCP {host}:{tcp_port}"))
+        asyncio.create_task(self._run(self._udp, f"UDP {host}:{udp_port}"))
 
+    async def stop_ethernet(self) -> None:
+        if self._tcp is not None:
+            try:
+                await self._tcp.stop()
+            except Exception:
+                log.exception("Error stopping TCP source")
+            self._tcp = None
+        if self._udp is not None:
+            try:
+                await self._udp.stop()
+            except Exception:
+                log.exception("Error stopping UDP source")
+            self._udp = None
+        self.sources = [s for s in self.sources if s not in (self._tcp, self._udp)]
+
+    async def start_serial(self) -> None:
+        if self._serial is not None:
+            log.info("Serial source already active; ignoring start_serial")
+            return
+        self._serial = SerialSource(self.on_packet)
+        self.sources.append(self._serial)
+        asyncio.create_task(self._run(self._serial, "Serial (RS-422)"))
+
+    async def stop_serial(self) -> None:
+        if self._serial is not None:
+            try:
+                await self._serial.stop()
+            except Exception:
+                log.exception("Error stopping serial source")
+            self._serial = None
+        self.sources = [s for s in self.sources if s is not self._serial]
+
+    # ------------------------------------------------------------------ #
+    async def apply_transport(self, transport: str) -> None:
+        """Switch between 'ethernet' and 'serial' modes at runtime."""
+        cfg = get_serial_config()
+        if transport == "serial":
+            await self.stop_ethernet()
+            await self.start_serial()
+        elif transport == "ethernet":
+            await self.stop_serial()
+            from ...config import settings
+            await self.start_ethernet(
+                settings.tm_listen_host,
+                settings.tm_listen_port,
+                9200,
+            )
+        else:
+            log.warning("Unknown transport %r; ignoring", transport)
+            return
+        log.info("Ingestion transport set to %s", transport)
+
+    # ------------------------------------------------------------------ #
     @staticmethod
     async def _run(source: Any, label: str) -> None:
         try:
@@ -48,22 +99,17 @@ class IngestionManager:
             log.exception("Source %s crashed", label)
 
     async def stop(self) -> None:
-        for s in self.sources:
-            try:
-                await s.stop()
-            except Exception:
-                log.exception("Error stopping source")
+        await self.stop_ethernet()
+        await self.stop_serial()
 
-    # ---- pub/sub for WS clients --------------------------------------- #
+    # ---- pub/sub (unchanged) ------------------------------------------ #
     def subscribe(self) -> asyncio.Queue:
         q: asyncio.Queue = asyncio.Queue(maxsize=500)
         self.subscribers.add(q)
-        log.info("WS subscriber added (total=%d)", len(self.subscribers))
         return q
 
     def unsubscribe(self, q: asyncio.Queue) -> None:
         self.subscribers.discard(q)
-        log.info("WS subscriber removed (total=%d)", len(self.subscribers))
 
     async def broadcast(self, pkt) -> None:
         if not self.subscribers:

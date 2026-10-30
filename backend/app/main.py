@@ -13,6 +13,8 @@ Startup sequence (in lifespan):
 Shutdown sequence (after yield):
   1. Stop all ingestion sources
 """
+from .logging_config import setup_logging
+setup_logging()   # must be called before any other logging happens
 
 from __future__ import annotations
 
@@ -39,6 +41,11 @@ from .api.routes_alarms import router as alarms_router
 from .api.routes_upload import router as upload_router
 from .api.routes_links import router as links_router
 from .api.ws_telemetry import router as ws_router
+from .api.ws_logs import router as ws_logs_router
+from .api.routes_logs import router as logs_router
+from .api.routes_settings import router as settings_router
+
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -113,8 +120,16 @@ async def lifespan(app: FastAPI):
     manager.writer = writer
 
     log.info("[5/6] Starting ingestion sources …")
-    await manager.start_tcp(settings.tm_listen_host, settings.tm_listen_port)
-    await manager.start_udp(settings.tm_listen_host, 9200)
+    from .tm_service.ingestion.serial_config import get_serial_config
+    cfg = get_serial_config()
+    if cfg.transport == "serial":
+        log.info("[5/6] Starting SERIAL source (RS-422)")
+        await manager.start_serial()
+    else:
+        log.info("[5/6] Starting ETHERNET sources (TCP + UDP)")
+        await manager.start_ethernet(
+            settings.tm_listen_host, settings.tm_listen_port, 9200,
+        )
     await asyncio.sleep(0.5)
 
     if settings.enable_sim:
@@ -140,7 +155,11 @@ async def lifespan(app: FastAPI):
     else:
         log.info("[6/6] Simulator disabled (ENABLE_SIM=false)")
 
-    log.info("==> Startup complete. Sources: TCP:%d, UDP:9200, decoder=%s",
+    if cfg.transport == "serial":
+        log.info("Serial config: port=%s, baud=%d, flow=%s",
+                 cfg.port, cfg.baudrate, cfg.flow_control)
+    else:
+        log.info("==> Startup complete. Sources: TCP:%d, UDP:9200, decoder=%s",
              settings.tm_listen_port, settings.tm_decoder)
 
     yield
@@ -175,3 +194,7 @@ app.include_router(alarms_router)
 app.include_router(upload_router)
 app.include_router(links_router)
 app.include_router(ws_router)
+app.include_router(ws_logs_router)
+app.include_router(logs_router)
+app.include_router(settings_router)
+
