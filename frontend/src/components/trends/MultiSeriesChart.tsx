@@ -14,16 +14,15 @@ import { chartTokens } from "@/lib/theme-tokens";
 import type { DecodedPacket } from "@/lib/api";
 
 interface Props {
-  selectedKeys: string[]; // ["0x100:cam_fpa_temp", ...]
+  selectedKeys: string[];
 }
 
 const PALETTE_DARK = [
-  "#8494DA", "#22C55E", "#FFB020", "#A855F7", "#FF4D5E",
+  "#00E5FF", "#22C55E", "#FFB020", "#A855F7", "#FF4D5E",
   "#38BDF8", "#F472B6", "#FBBF24", "#34D399", "#818CF8",
 ];
-
 const PALETTE_LIGHT = [
-  "#4B5FB4", "#15803D", "#B45309", "#7E22CE", "#BE123C",
+  "#0284C7", "#15803D", "#B45309", "#7E22CE", "#BE123C",
   "#0369A1", "#BE185D", "#A16207", "#047857", "#4338CA",
 ];
 
@@ -35,29 +34,30 @@ export function MultiSeriesChart({ selectedKeys }: Props) {
 
   const { data, series } = useMemo(() => {
     const wanted = new Map<number, { field: string; key: string }>();
-    for (const k of selectedKeys) {
-      const [apidHex, field] = k.split(":");
-      wanted.set(parseInt(apidHex, 16), { field, key: field });
-    }
-
-    const bucketMap = new Map<number, Record<string, number>>();
     const seriesMeta: { key: string; label: string; color: string }[] = [];
     let idx = 0;
 
     for (const k of selectedKeys) {
-      const [apidHex, field] = k.split(":");
+      const [apidStr, field] = k.split(":");
+      const apid = Number(apidStr);
+      wanted.set(apid, { field, key: field });
       seriesMeta.push({
         key: field,
-        label: `${apidHex}.${field}`,
+        label: `${apidStr}:${field}`,
         color: palette[idx++ % palette.length],
       });
     }
+
+    const bucketMap = new Map<number, Record<string, number>>();
 
     for (const p of packets as DecodedPacket[]) {
       const w = wanted.get(p.apid);
       if (!w) continue;
       const f = p.fields[w.field];
-      if (!f || typeof f.value !== "number") continue;
+      
+      if (!f || f.value === null || f.value === undefined) continue;
+      if (typeof f.value !== "number" || Number.isNaN(f.value)) continue;
+      
       const bucket = Math.floor(p.timestamp * 2) / 2;
       const entry = bucketMap.get(bucket) ?? { t: bucket };
       entry[w.field] = f.value;
@@ -71,8 +71,16 @@ export function MultiSeriesChart({ selectedKeys }: Props) {
     return { data: sorted, series: seriesMeta };
   }, [packets, selectedKeys, palette]);
 
+  if (selectedKeys.length === 0) {
   return (
-    <div className="h-[400px]">
+    <div className="h-[400px] flex items-center justify-center text-sm text-muted">
+      Select parameters above to see trends
+    </div>
+  );
+}
+
+  return (
+    <div className="h-[400px]" key={selectedKeys.join(",")}>
       <ResponsiveContainer>
         <LineChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
           <CartesianGrid stroke={tokens.grid} strokeDasharray="3 3" />
@@ -80,9 +88,10 @@ export function MultiSeriesChart({ selectedKeys }: Props) {
             dataKey="t"
             type="number"
             domain={["dataMin", "dataMax"]}
-            tickFormatter={(v) =>
-              new Date((v as number) * 1000).toISOString().substring(17, 23)
-            }
+            tickFormatter={(v) => {
+              const d = new Date((v as number) * 1000);
+              return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+            }}
             stroke={tokens.axis}
             fontSize={10}
           />
@@ -97,9 +106,8 @@ export function MultiSeriesChart({ selectedKeys }: Props) {
             }}
             labelStyle={{ color: tokens.tooltipText }}
             itemStyle={{ color: tokens.tooltipText }}
-            labelFormatter={(v) =>
-              new Date((v as number) * 1000).toLocaleTimeString()
-            }
+            labelFormatter={(v) => new Date((v as number) * 1000).toLocaleTimeString()}
+            isAnimationActive={false}
           />
           {series.map((s) => (
             <Line
@@ -111,7 +119,6 @@ export function MultiSeriesChart({ selectedKeys }: Props) {
               isAnimationActive={false}
               strokeWidth={1.75}
               connectNulls
-              name={s.label}
             />
           ))}
         </LineChart>

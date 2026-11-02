@@ -52,17 +52,20 @@ def TEMP_M2S090(D: int) -> float:
 
 
 # ─── NTC thermistor (log formula from ICD W28–W55) ────────────────────
-def TEMP_NTC(D: int) -> float:
+def TEMP_NTC(D: int) -> float | None:
     """
-    R = 10 * (256*W_hi + W_lo) / (4095 - 256*W_hi - W_lo)
-    Actually D is already (W_hi<<8 | W_lo), so:
-        R = 10 * D / (4095 - D)
-    T = 1 / ((1/298.15) + ln(R/10) / 4100) - 273.15
+    NTC thermistor temperature from raw ADC reading.
+
+    Returns None (instead of NaN) for out-of-range inputs, which
+    serializes to JSON null cleanly.
     """
     if D <= 0 or D >= 4095:
-        return float("nan")
+        return None       # ← was float("nan")
     R = 10.0 * D / (4095.0 - D)
-    return 1.0 / ((1.0 / 298.15) + math.log(R / 10.0) / 4100.0) - 273.15
+    try:
+        return 1.0 / ((1.0 / 298.15) + math.log(R / 10.0) / 4100.0) - 273.15
+    except (ValueError, ZeroDivisionError):
+        return None
 
 
 # ─── Signed 16-bit (two's complement) ─────────────────────────────────

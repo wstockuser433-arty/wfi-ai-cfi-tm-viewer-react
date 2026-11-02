@@ -12,6 +12,7 @@ export function PacketDecoder() {
   const subsystems = useFilters((s) => s.subsystems);
   const isDark = useIsDark();
   const [selectedApid, setSelectedApid] = useState<number | null>(null);
+  const [fieldSearch, setFieldSearch] = useState("");
 
   const availableApids = useMemo(() => {
     if (!meta) return [];
@@ -42,11 +43,20 @@ export function PacketDecoder() {
 
   const hexLines = useMemo(() => {
     if (!latest) return [];
-    const bytes = new Uint8Array(
-      latest.raw_hex.match(/.{2}/g)!.map((h) => parseInt(h, 16))
-    );
+    const matches = latest.raw_hex.match(/.{2}/g);
+    if (!matches) return [];
+    const bytes = new Uint8Array(matches.map((h) => parseInt(h, 16)));
     return formatHex(bytes);
   }, [latest]);
+
+  // ─── Field list, filtered by search ──────────────────────────────
+  const fieldEntries = useMemo(() => {
+    if (!latest?.fields) return [];
+    const entries = Object.entries(latest.fields);
+    if (!fieldSearch.trim()) return entries;
+    const q = fieldSearch.toLowerCase();
+    return entries.filter(([name]) => name.toLowerCase().includes(q));
+  }, [latest, fieldSearch]);
 
   if (!meta) return <Card>Loading meta…</Card>;
 
@@ -58,6 +68,11 @@ export function PacketDecoder() {
           {subsystems.size > 0 && (
             <Badge variant="cyan">
               filtered · {subsystems.size} subsystem{subsystems.size > 1 ? "s" : ""}
+            </Badge>
+          )}
+          {latest && (
+            <Badge variant="muted">
+              {Object.keys(latest.fields ?? {}).length} fields
             </Badge>
           )}
         </div>
@@ -80,9 +95,9 @@ export function PacketDecoder() {
           )}
         </select>
       </div>
-      
+
       <div className="grid grid-cols-2 gap-4 flex-1 min-h-0">
-        {/* Hex dump */}
+        {/* ─── Hex dump ────────────────────────────────────────── */}
         <div className="flex flex-col min-h-0">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] uppercase tracking-widest text-muted">
@@ -94,7 +109,6 @@ export function PacketDecoder() {
               </Badge>
             )}
           </div>
-          {/* bg + text resolve through CSS vars — theme-aware automatically */}
           <div className="mono text-[11px] leading-5 bg-space-950/60 border border-white/5 rounded p-2 overflow-auto flex-1">
             {hexLines.length === 0 ? (
               <span className="text-muted">waiting for packets…</span>
@@ -108,57 +122,116 @@ export function PacketDecoder() {
           </div>
         </div>
 
-        {/* Decoded fields */}
+        {/* ─── Decoded fields ──────────────────────────────────── */}
         <div className="flex flex-col min-h-0">
-          <span className="text-[10px] uppercase tracking-widest text-muted mb-2">
-            Decoded fields
-          </span>
+          <div className="flex items-center justify-between mb-2 gap-2">
+            <span className="text-[10px] uppercase tracking-widest text-muted">
+              Decoded fields
+            </span>
+            {latest && (
+              <input
+                type="text"
+                value={fieldSearch}
+                onChange={(e) => setFieldSearch(e.target.value)}
+                placeholder="filter…"
+                className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-[10px] placeholder:text-muted focus:outline-none focus:border-accent/40 mono w-32"
+                spellCheck={false}
+              />
+            )}
+          </div>
           <div className="space-y-1.5 overflow-auto flex-1 pr-1">
             {!latest ? (
               <span className="text-muted text-xs">no data</span>
             ) : (
               <>
-              <FieldRow label="CC" value={`0x${latest.cc.toString(16).padStart(2, "0")}`} />
-              <FieldRow
-                label="APID"
-                value={`0x${latest.apid.toString(16).toUpperCase()} (${latest.card})`}
-              />
-              <FieldRow label="Seq" value={latest.seq.toString()} />
-              <FieldRow label="Len" value={latest.length.toString()} />
+                {/* Header rows */}
+                <FieldRow
+                  label="CC"
+                  value={`0x${latest.cc.toString(16).padStart(2, "0")}`}
+                />
+                <FieldRow
+                  label="APID"
+                  value={`0x${latest.apid.toString(16).toUpperCase()} (${latest.card})`}
+                />
+                <FieldRow label="Seq" value={latest.seq.toString()} />
+                <FieldRow label="Len" value={latest.length.toString()} />
 
-              {/* ⭐ PUS-specific rows — render only when present */}
-              {latest.service_type !== undefined && (
-                <FieldRow label="PUS Service" value={String(latest.service_type)} />
-              )}
-              {latest.service_subtype !== undefined && (
-                <FieldRow label="PUS Subservice" value={String(latest.service_subtype)} />
-              )}
+                {latest.unit_id !== undefined && (
+                  <FieldRow
+                    label="Unit ID"
+                    value={`0x${latest.unit_id.toString(16).toUpperCase()}`}
+                  />
+                )}
+                {latest.unit_sub_id !== undefined && (
+                  <FieldRow
+                    label="Unit Sub ID"
+                    value={`0x${latest.unit_sub_id.toString(16).toUpperCase()}`}
+                  />
+                )}
+                {latest.sub_hdr_label !== undefined && (
+                  <FieldRow label="Sub-header" value={latest.sub_hdr_label} />
+                )}
+                {latest.service_type !== undefined && (
+                  <FieldRow
+                    label="Service"
+                    value={`0x${latest.service_type.toString(16).toUpperCase()}`}
+                  />
+                )}
+                {latest.service_subtype !== undefined && (
+                  <FieldRow
+                    label="Sub-Service"
+                    value={`0x${latest.service_subtype.toString(16).toUpperCase()}`}
+                  />
+                )}
 
-              {latest.unit_id !== undefined && (
-                <FieldRow label="Unit ID" value={`0x${latest.unit_id.toString(16).toUpperCase()}`} />
-              )}
-              {latest.unit_sub_id !== undefined && (
-                <FieldRow label="Unit Sub ID" value={`0x${latest.unit_sub_id.toString(16).toUpperCase()}`} />
-              )}
-              {latest.sub_hdr_label !== undefined && (
-                <FieldRow label="Sub-header" value={latest.sub_hdr_label} />
-              )}
-              {latest.service_type !== undefined && (
-                <FieldRow label="Service" value={`0x${latest.service_type.toString(16).toUpperCase()}`} />
-              )}
-              {latest.service_subtype !== undefined && (
-                <FieldRow label="Sub-Service" value={`0x${latest.service_subtype.toString(16).toUpperCase()}`} />
-              )}
+                <div className="h-px bg-white/5 my-2" />
 
-              <div className="h-px bg-white/5 my-2" />
-              {/* ... existing field rows ... */}
-            </>
+                {/* ⭐ THE FIELDS LOOP — this was missing before ⭐ */}
+                {fieldEntries.length === 0 ? (
+                  <span className="text-muted text-xs">
+                    {fieldSearch
+                      ? "no fields match filter"
+                      : "no decoded fields in packet"}
+                  </span>
+                ) : (
+                  fieldEntries.map(([name, f]) => (
+                    <FieldRow
+                      key={name}
+                      label={name}
+                      value={formatFieldValue(f)}
+                      limits={
+                        f.limits[0] != null || f.limits[1] != null
+                          ? `${f.limits[0] ?? "—"}–${f.limits[1] ?? "—"}`
+                          : undefined
+                      }
+                      status={f.status as "OK" | "WARN" | "CRIT"}
+                    />
+                  ))
+                )}
+              </>
             )}
           </div>
         </div>
       </div>
     </Card>
   );
+}
+
+// ─── Field value formatting (handles nulls, enums, units) ─────────────
+function formatFieldValue(f: {
+  value: number | string | null | undefined;
+  unit: string;
+  enum?: Record<string, string> | null;
+}): string {
+  if (f.value === null || f.value === undefined) return "—";
+
+  if (f.enum && typeof f.value === "number" || typeof f.value === "string") {
+    const label = f.enum?.[String(f.value)];
+    if (label) return `${f.value} (${label})`;
+  }
+
+  const unit = f.unit && f.unit !== "-" ? ` ${f.unit}` : "";
+  return `${f.value}${unit}`;
 }
 
 function FieldRow({
@@ -174,8 +247,10 @@ function FieldRow({
 }) {
   return (
     <div className="flex items-center justify-between text-xs py-1 border-b border-white/5">
-      <span className="mono text-muted">{label}</span>
-      <div className="flex items-center gap-2">
+      <span className="mono text-muted truncate mr-2" title={label}>
+        {label}
+      </span>
+      <div className="flex items-center gap-2 shrink-0">
         {limits && <span className="mono text-[10px] text-muted">{limits}</span>}
         <span className="mono text-slate-100">{value}</span>
         {status && (

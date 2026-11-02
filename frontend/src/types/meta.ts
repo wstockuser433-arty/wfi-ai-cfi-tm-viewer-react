@@ -33,7 +33,30 @@ export interface ApidEntry {
 }
 
 export interface MetaResponse {
-  unit: { id: number; label: string };
-  apids: ApidEntry[];
-  cards: Record<string, CardSpec>;
+  unit?: { id: number; label: string };
+  subsystems: Record<string, {
+    label: string;
+    color: string;
+    cards: Record<string, {
+      label: string;
+      apid: number;
+      hw_class: "HW" | "SW";
+      fields: FieldSpec[];
+      unit_id?: number;
+      unit_sub_id?: number;
+      service?: number;
+      subservice?: number;
+    }>;
+  }>;
+  links: unknown[];
+  apids: {
+    apid: number;
+    subsystem: string;
+    card: string;
+    label: string;
+    unit_id?: number;
+    unit_sub_id?: number;
+    service?: number;
+    subservice?: number;
+  }[];
 }

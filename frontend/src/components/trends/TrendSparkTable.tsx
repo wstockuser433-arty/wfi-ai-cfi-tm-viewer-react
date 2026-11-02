@@ -27,7 +27,7 @@ export function TrendSparkTable() {
         if (existing) {
           existing.count += 1;
           existing.value = f.value;
-          existing.status = f.status;
+          existing.status = f.status as "OK" | "WARN" | "CRIT";
         } else {
           seen.set(key, {
             key,
@@ -36,7 +36,7 @@ export function TrendSparkTable() {
             param: name,
             value: f.value,
             unit: f.unit,
-            status: f.status,
+            status: f.status as "OK" | "WARN" | "CRIT",
             count: 1,
           });
         }
@@ -64,7 +64,7 @@ export function TrendSparkTable() {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr className="border-b border-subtle hover:bg-white/5 transition-colors">
+              <tr key={r.key} className="border-b border-subtle hover:bg-white/5 transition-colors">
                 <td className="mono py-1.5 px-2">{r.param}</td>
                 <td className="py-1.5 px-2 text-muted">{r.subsystem}</td>
                 <td className="py-1.5 px-2 text-muted">{r.card}</td>
@@ -74,11 +74,7 @@ export function TrendSparkTable() {
                     : `${r.value} ${r.unit}`}
                 </td>
                 <td className="py-1.5 px-2 text-right">
-                  <Badge
-                    variant={
-                      r.status === "OK" ? "ok" : r.status === "WARN" ? "warn" : "crit"
-                    }
-                  >
+                  <Badge variant={r.status === "OK" ? "ok" : r.status === "WARN" ? "warn" : "crit"}>
                     {r.status}
                   </Badge>
                 </td>

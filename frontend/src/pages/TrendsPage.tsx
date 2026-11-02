@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { useTelemetry } from "@/store/telemetryStore";
 import { useIsDark } from "@/hooks/useIsDark";
@@ -10,25 +10,46 @@ export function TrendsPage() {
   const meta = useTelemetry((s) => s.meta);
   const isDark = useIsDark();
 
-  const [selected, setSelected] = useState<Set<string>>(
-    new Set(["0x10:cam_fpa_temp", "0x21:ai_soc_temp", "0x41:ppc_dcdc_temp"])
-  );
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const availableParams = useMemo(() => {
-    if (!meta?.cards) return [];
-    const out: { key: string; label: string; color: string }[] = [];
-    for (const [cardKey, card] of Object.entries(meta.cards)) {
+  if (!meta?.subsystems) return [];
+  const out: { key: string; label: string; color: string }[] = [];
+  
+  for (const [subKey, sub] of Object.entries(meta.subsystems)) {
+    for (const [cardKey, card] of Object.entries(sub.cards ?? {})) {
       for (const f of card.fields ?? []) {
-        if (f.type === "u8" || f.type === "u16") continue;
+        // Skip raw ADC counts — show physical/calc values only
+        if (f.name.endsWith("_raw")) continue;
+        // Skip bitfields (they're sub-fields of a parent u8)
+        if (f.name.includes(".")) continue;
+        
         out.push({
-          key: `0x${card.apid.toString(16).toUpperCase()}:${f.name}`,
-          label: `${card.subsystem}/${cardKey}.${f.name}`,
-          color: subsystemColor(card.subsystem, isDark),
+          key: `${card.apid}:${f.name}`,
+          label: `${subKey}/${cardKey}.${f.name}`,
+          color: subsystemColor(subKey, isDark),
         });
       }
     }
-    return out;
-  }, [meta, isDark]);
+  }
+  return out;
+}, [meta, isDark]);
+
+  // Initialize with default fields once meta loads.
+  // We select fields that produce numeric values even when ADC is 0,
+  // so the chart isn't blank while testing with the simulator.
+ useEffect(() => {
+  if (selected.size === 0 && availableParams.length > 0) {
+    const defaults = availableParams
+      .filter((p) => 
+        p.key.includes("power_conv_chip_temp_c") ||
+        p.key.includes("mcu_primary_current_a") ||
+        p.key.includes("ntc_primary_ch1_c")
+      )
+      .map((p) => p.key);
+    if (defaults.length > 0) setSelected(new Set(defaults));
+  }
+}, [availableParams, selected.size]);
 
   const toggle = (key: string) => {
     const next = new Set(selected);

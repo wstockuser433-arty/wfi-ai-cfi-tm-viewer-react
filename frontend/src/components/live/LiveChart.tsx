@@ -15,17 +15,15 @@ import { Card } from "../ui/card";
 
 interface Sample {
   t: number;
-  cam_fpa: number | null;
-  ai_soc: number | null;
-  ppc_dcdc: number | null;
+  pwr_chip: number | null;
+  mcu_i: number | null;
+  cmd_rx: number | null;
 }
 
-// Series colors are theme-independent (they're accent hues); only the
-// chrome (grid, axes, tooltip) swaps between themes.
 const SERIES = [
-  { apid: 16, field: "cam_fpa_temp",  key: "cam_fpa" as const,  label: "Camera FPA Temp", color: "#8494DA", colorLight: "#4B5FB4" },
-  { apid: 33, field: "ai_soc_temp",   key: "ai_soc" as const,   label: "CDPM (P) AI SoC", color: "#22C55E", colorLight: "#15803D" },
-  { apid: 65, field: "ppc_dcdc_temp", key: "ppc_dcdc" as const, label: "CTPU (P) DC-DC",   color: "#FFB020", colorLight: "#B45309" },
+  { apid: 16, field: "power_conv_chip_temp_c", key: "pwr_chip" as const, label: "Power Conv Chip Temp", color: "#22C55E", colorLight: "#15803D" },
+  { apid: 16, field: "mcu_primary_current_a", key: "mcu_i" as const, label: "MCU Primary Current", color: "#FFB020", colorLight: "#B45309" },
+  { apid: 16, field: "cmd_rx_count", key: "cmd_rx" as const, label: "Command Rx Count", color: "#8494DA", colorLight: "#4B5FB4" },
 ];
 
 const REBUILD_INTERVAL_MS = 500;
@@ -44,14 +42,22 @@ export function LiveChart() {
     lastBuildRef.current = now;
 
     const byTime = new Map<number, Partial<Sample>>();
-    for (const p of packets) {
-      const series = SERIES.find((s) => s.apid === p.apid);
-      if (!series) continue;
-      const field = p.fields[series.field];
-      if (!field || typeof field.value !== "number") continue;
+    const recentPackets = packets.slice(-500);
+
+    for (const p of recentPackets) {
+      const matchingSeries = SERIES.filter((s) => Number(s.apid) === Number(p.apid));
+      if (matchingSeries.length === 0) continue;
+      
       const bucket = Math.floor(p.timestamp * 2) / 2;
       const entry = byTime.get(bucket) ?? { t: bucket };
-      (entry as Record<string, number>)[series.key] = field.value;
+      
+      for (const series of matchingSeries) {
+        const field = p.fields[series.field];
+        if (!field || field.value === null || field.value === undefined) continue;
+        if (typeof field.value !== "number" || Number.isNaN(field.value)) continue;
+        (entry as Record<string, number>)[series.key] = field.value;
+      }
+      
       byTime.set(bucket, entry);
     }
 
@@ -68,7 +74,13 @@ export function LiveChart() {
       return next;
     });
   }, [packets]);
-
+  if (data.length === 0) {
+    return (
+      <Card className="h-full flex items-center justify-center text-sm text-muted">
+        Waiting for numeric values from {SERIES.map(s => s.field).join(", ")}…
+      </Card>
+    );
+  }
   return (
     <Card className="h-full">
       <div className="flex items-center justify-between mb-3">
@@ -97,7 +109,7 @@ export function LiveChart() {
               dataKey="t"
               type="number"
               domain={["dataMin", "dataMax"]}
-              tickFormatter={(v) => new Date((v as number) * 1000).toISOString().substring(17, 23)}
+              tickFormatter={(v) => new Date((v as number) * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
               stroke={tokens.axis}
               fontSize={10}
             />

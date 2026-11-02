@@ -24,6 +24,7 @@ Wire format:
 
 from __future__ import annotations
 
+import math
 import logging
 import struct
 from typing import Any
@@ -249,7 +250,15 @@ class EboxDecoder(PacketDecoder):
                 computed = apply_calc(f["calc"], int(D))
             except Exception:
                 log.exception("calc failed for %s.%s", spec["card"], name)
-                continue
+                computed = None
+
+            out[name] = {
+                "value": round(computed, 4) if isinstance(computed, float) and math.isfinite(computed) else computed,
+                "unit": f.get("unit", ""),
+                "limits": [f.get("ltl"), f.get("htl")],
+                "status": EboxDecoder._status(computed if computed is not None else 0, f),
+                "enum": None,
+            }
 
             out[name] = {
                 "value": round(computed, 4) if isinstance(computed, float) else computed,

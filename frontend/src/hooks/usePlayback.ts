@@ -15,7 +15,7 @@ export function usePlayback({ start, end, speed }: { start: Date; end: Date; spe
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);
       if (msg.packets) ingest(msg.packets);
-      if (msg.done) { setPlaying(false); ws.close(); }
+      if (msg.type === "done" || msg.done === true) { setPlaying(false); ws.close(); }
     };
     ws.onclose = () => setPlaying(false);
   }, [start, end, speed, ingest]);
