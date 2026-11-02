@@ -1,3 +1,11 @@
 sudo ufw allow 9200/udp                 # only if ufw is enabled
 sudo tcpdump -i any -X udp port 9200    # watch the raw packets
 nc -ul 9200 | xxd                       # or dump the bytes with netcat
+
+
+cd ~/Documents/Hassan/scc-work/wfi-ai-cfi-tm-viewer-react-oem-packets/backend
+cat logs/tm-viewer.log
+# or to watch it live:
+tail -f logs/tm-viewer.log
+
+http://localhost:8000/api/logs/download

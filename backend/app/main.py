@@ -111,6 +111,20 @@ async def lifespan(app: FastAPI):
     writer = StorageWriter(redis)
     decoder = get_decoder(settings.tm_decoder)      # ⭐ init the decoder
 
+    log.info("[3/6] Creating StorageWriter + Decoder (mode=%s) …", settings.tm_decoder)
+    writer = StorageWriter(redis)
+    decoder = get_decoder(settings.tm_decoder)
+
+    # ⭐ Preload EBOX registry if using EBOX decoder
+    if settings.tm_decoder.lower() == "ebox":
+        from .tm_service.registry_ebox import get_ebox_registry
+        log.info("     Preloading EBOX registry (YAML validation) …")
+        reg = get_ebox_registry()
+        log.info(
+            "     EBOX registry ready: %d cards, %d unique 4-tuples",
+            len(reg.cards), len(reg.quad_map),
+        )
+
     log.info("[4/6] Creating IngestionManager …")
     manager = IngestionManager(on_packet)
     manager.writer = writer

@@ -27,8 +27,16 @@ chmod +x send_ebox_tm.sh
 # Serial, forever, only CAM_ELEC, verbose
 ./send_ebox_serial.sh -p /tmp/ttyV0 -c CAM_ELEC -n 0 -v
 
-./send_ebox_serial.sh -p /tmp/ttyV0 -n 0 -i 0.1 -y /home/hassan/Documents/Hassan/scc-work/wfi-ai-cfi-tm-viewer-react-oem-packets/backend/app/tm_dictionary/ebox.yaml -v
+./send_ebox_serial.sh -p /tmp/ttyV0 -n 0 -i 1 -y /home/hassan/Documents/Hassan/scc-work/wfi-ai-cfi-tm-viewer-react-oem-packets/backend/app/tm_dictionary/ebox.yaml -v
 
+
+./send_ebox_serial.sh -p /tmp/ttyV0 -y /home/hassan/Documents/Hassan/scc-work/wfi-ai-cfi-tm-viewer-react-oem-packets/backend/app/tm_dictionary/ebox.yaml -n 5 -v
+
+./send_ebox_serial.sh \
+  -p /tmp/ttyV0 \
+  -y /home/hassan/Documents/Hassan/scc-work/wfi-ai-cfi-tm-viewer-react-oem-packets/backend/app/tm_dictionary/ebox.yaml \
+  -c CAMERA_UNIT_STATUS \
+  -n 5 -v
 
 sudo tee /etc/systemd/system/ebox-pty.service <<'EOF'
 [Unit]

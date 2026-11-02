@@ -31,17 +31,7 @@ set -euo pipefail
 
 # Format: "CARD_KEY|unit_sub_id|service|subservice|description"
 ALL_CARDS=(
-  "CAM_ELEC|16|100|1|Camera Electronics Card"
-  "CDPM_P_FPGA|32|102|1|FPGA Processing Card"
-  "CDPM_P_AI|33|102|2|AI Board"
-  "CDPM_P_THCC|34|102|3|Thermal Control Card"
-  "CDPM_R_FPGA|48|104|1|FPGA Processing Card (R)"
-  "CDPM_R_AI|49|104|2|AI Board (R)"
-  "CTPU_P_PWR|64|112|1|Power Card"
-  "CTPU_P_PPC|65|112|2|Power Processing Card"
-  "CTPU_R_PWR|80|114|1|Power Card (R)"
-  "CTPU_R_PPC|81|114|2|Power Processing Card (R)"
-  "UNIT_HK|127|127|1|Unit Housekeeping"
+  "CAMERA_UNIT_STATUS|16|104|1|Camera Unit Status Telemetry"
 )
 
 declare -A CARD_SUBID=()
@@ -81,6 +71,7 @@ import math, random, re, struct, sys, time, zlib
 MAX_PAYLOAD = 237
 TYPES = {
     "u8": (">B", 1), "u16": (">H", 2), "u32": (">I", 4), "u64": (">Q", 8),
+    "u24": (None, 3),   # ← special: 3-byte big-endian, handled below
     "i8": (">b", 1), "i16": (">h", 2), "i32": (">i", 4), "i64": (">q", 8),
     "f32": (">f", 4), "f64": (">d", 8),
 }
@@ -214,9 +205,18 @@ def build(key, c, seq, elapsed):
     buf, shown, decoded = bytearray(size), [], {}
     for f in c["fields"]:
         fmt, n = TYPES[f["type"]]
-        raw = struct.pack(fmt, value(key, f, seq, elapsed))
+        val = value(key, f, seq, elapsed)
+        if f["type"] == "u24":
+            # 3-byte big-endian
+            v = int(val) & 0xFFFFFF
+            raw = bytes([(v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF])
+        else:
+            raw = struct.pack(fmt, val)
         buf[f["offset"]:f["offset"] + n] = raw
-        back = struct.unpack(fmt, raw)[0]
+        if f["type"] == "u24":
+            back = (raw[0] << 16) | (raw[1] << 8) | raw[2]
+        else:
+            back = struct.unpack(fmt, raw)[0]
         decoded[f["name"]] = back
         if "enum" in f:
             txt = "%s=%s" % (f["name"], f["enum"].get(back, back))

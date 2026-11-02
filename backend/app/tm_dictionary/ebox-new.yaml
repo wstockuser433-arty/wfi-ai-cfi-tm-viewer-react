@@ -1,0 +1,431 @@
+# ============================================================
+# EBOX TM Dictionary — RS-422 ICD v1.2 (Tables 48, 49, 5.x)
+# ============================================================
+# Key: 4-tuple (unit_id, unit_sub_id, service, subservice)
+#
+# Unit IDs:
+#   0x1A — EBOX (Camera Unit / Packet #12)
+#   0x2A — CTPU / CDPM_R (AI) / CDPM_R (FPGA)
+#
+# Service types:
+#   0x64 — Telemetry Poll (TC-path)
+#   0x65 — Telecommand (TC-path)
+#   0x66 — Telemetry response
+#   0x67 — Data Block (TC-path)
+#   0x68 — ACK response / TM data (§5.2 – §5.8)
+#   0x6A — GNC broadcast (§6.2)
+#
+# Sub-services under 0x68:
+#   0x01 Camera Unit Status          (§5.3, Table 49)  ← main one
+#   0x02 Image Motion Calculation    (§5.4)
+#   0x03 Image Motion Coefficient    (§5.5)
+#   0x04 Terrain Elevation           (§5.6)
+#   0x05 Uplink Result 1             (§5.7)
+#   0x06 Uplink Result 2             (§5.8)
+# ============================================================
+
+unit:
+  id: 0x1A
+  label: "EBOX"
+
+# ─────────────────────────────────────────────────────────────
+# Calc helpers
+#
+# Every field with `calc_from:` means: take the raw uN value D
+# from `calc_from`, apply the `calc` Python expression, and
+# store the result in this field's `value`.
+#
+# Named helpers live in ebox_calcs.py so we don't eval anything.
+# ─────────────────────────────────────────────────────────────
+
+cards:
+
+  # ══════════════════════════════════════════════════════════════
+  # §5.3 Camera Unit Status Telemetry — Table 49 (Packet #12)
+  # EBOX (0x1A / 0x10) → CTPU
+  # Service 0x68 / Sub-Service 0x01
+  # Total payload: 238 bytes (offsets 0..237), no gaps (see NOTE below)
+  # ══════════════════════════════════════════════════════════════
+  CAMERA_UNIT_STATUS:
+    label: "Camera Unit Status Telemetry"
+    unit_id: 0x1A
+    unit_sub_id: 0x10
+    service: 0x68
+    subservice: 0x01
+    subsystem: CAMERA
+    hw_class: HW
+    fields:
+      # ── Command counters (W1–W9, 1 B each) ────────────────────
+      - { name: cmd_rx_count,               offset: 0,  type: u8, unit: "cnt" }
+      - { name: cmd_cksum_err_count,        offset: 1,  type: u8, unit: "cnt" }
+      - { name: cmd_param_err_count,        offset: 2,  type: u8, unit: "cnt" }
+      - { name: cmd_illegal_err_count,      offset: 3,  type: u8, unit: "cnt" }
+      - { name: payload_status_req_count,   offset: 4,  type: u8, unit: "cnt" }
+      - { name: img_motion_req_count,       offset: 5,  type: u8, unit: "cnt" }
+      - { name: img_motion_param_req_count, offset: 6,  type: u8, unit: "cnt" }
+      - { name: terrain_elev_req_count,     offset: 7,  type: u8, unit: "cnt" }
+      - { name: uplink_state_req_count,     offset: 8,  type: u8, unit: "cnt" }
+
+      # ── Broadcast counters (W10–W11) ──────────────────────────
+      - { name: sat_time_broadcast_rx_count, offset: 9,  type: u8, unit: "cnt" }
+      - { name: gnc_broadcast_rx_count,      offset: 10, type: u8, unit: "cnt" }
+
+      # ── Temperatures & currents (W12–W21) ─────────────────────
+      - name: power_conv_chip_temp_raw
+        offset: 11
+        type: u16
+        unit: "-"
+      - name: power_conv_chip_temp_c
+        offset: 11
+        type: u16
+        unit: "°C"
+        calc_from: power_conv_chip_temp_raw
+        calc: "326.85 - D/4095 * 2500"
+
+      - name: mcu_primary_current_raw
+        offset: 13
+        type: u16
+        unit: "-"
+      - name: mcu_primary_current_a
+        offset: 13
+        type: u16
+        unit: "A"
+        calc_from: mcu_primary_current_raw
+        calc: "2.5 * ((D/4095*5) - 2.445)"
+
+      - name: mcu_backup_current_raw
+        offset: 15
+        type: u16
+        unit: "-"
+      - name: mcu_backup_current_a
+        offset: 15
+        type: u16
+        unit: "A"
+        calc_from: mcu_backup_current_raw
+        calc: "2.5 * ((D/4095*5) - 2.445)"
+
+      - name: imaging_module_current_raw
+        offset: 17
+        type: u16
+        unit: "-"
+      - name: imaging_module_current_a
+        offset: 17
+        type: u16
+        unit: "A"
+        calc_from: imaging_module_current_raw
+        calc: "2.5 * ((D/4095*5) - 2.445)"
+
+      - name: ai_module_current_raw
+        offset: 19
+        type: u16
+        unit: "-"
+      - name: ai_module_current_a
+        offset: 19
+        type: u16
+        unit: "A"
+        calc_from: ai_module_current_raw
+        calc: "2.5 * ((D/4095*5) - 2.445)"
+
+      # ── LTM8051 temperature (W22–W23, bit-dependent) ──────────
+      - name: ltm8051_temp_raw
+        offset: 21
+        type: u16
+        unit: "-"
+      - name: ltm8051_temp_c
+        offset: 21
+        type: u16
+        unit: "°C"
+        calc_from: ltm8051_temp_raw
+        calc: "LTM8051_TEMP(D)"    # special: sign-extends on D & 0x800
+
+      # ── FPGA / DDR / SoC temperatures (W24–W27) ───────────────
+      - name: ddr_memory_temp_raw
+        offset: 23
+        type: u16
+        unit: "-"
+      - name: ddr_memory_temp_c
+        offset: 23
+        type: u16
+        unit: "°C"
+        calc_from: ddr_memory_temp_raw
+        calc: "D * 0.0625"    # TBD: verify with EBOX team
+
+      - name: m2s090_temp_raw
+        offset: 25
+        type: u16
+        unit: "-"
+      - name: m2s090_temp_c
+        offset: 25
+        type: u16
+        unit: "°C"
+        calc_from: m2s090_temp_raw
+        calc: "D * 0.0625"    # TBD: verify with EBOX team
+
+      # ── Thermistors 1–14 (W28–W55, 14 × u16) ──────────────────
+      # 7 primary + 7 backup. NTC formula:
+      #   R = 10 * (256*D) / (4095 - 256*D)
+      #   T = 1/((1/298.15) + ln(R/10)/4100) - 273.15
+      # The calc expression calls NTC(D) helper.
+      - { name: ntc_primary_ch1_raw,  offset: 27, type: u16, unit: "-" }
+      - { name: ntc_primary_ch1_c,    offset: 27, type: u16, unit: "°C",
+          calc_from: ntc_primary_ch1_raw, calc: "NTC(D)" }
+      - { name: ntc_primary_ch2_raw,  offset: 29, type: u16, unit: "-" }
+      - { name: ntc_primary_ch2_c,    offset: 29, type: u16, unit: "°C",
+          calc_from: ntc_primary_ch2_raw, calc: "NTC(D)" }
+      - { name: ntc_primary_ch3_raw,  offset: 31, type: u16, unit: "-" }
+      - { name: ntc_primary_ch3_c,    offset: 31, type: u16, unit: "°C",
+          calc_from: ntc_primary_ch3_raw, calc: "NTC(D)" }
+      - { name: ntc_primary_ch4_raw,  offset: 33, type: u16, unit: "-" }
+      - { name: ntc_primary_ch4_c,    offset: 33, type: u16, unit: "°C",
+          calc_from: ntc_primary_ch4_raw, calc: "NTC(D)" }
+      - { name: ntc_primary_ch5_raw,  offset: 35, type: u16, unit: "-" }
+      - { name: ntc_primary_ch5_c,    offset: 35, type: u16, unit: "°C",
+          calc_from: ntc_primary_ch5_raw, calc: "NTC(D)" }
+      - { name: ntc_primary_ch6_raw,  offset: 37, type: u16, unit: "-" }
+      - { name: ntc_primary_ch6_c,    offset: 37, type: u16, unit: "°C",
+          calc_from: ntc_primary_ch6_raw, calc: "NTC(D)" }
+      - { name: ntc_primary_ch7_raw,  offset: 39, type: u16, unit: "-" }
+      - { name: ntc_primary_ch7_c,    offset: 39, type: u16, unit: "°C",
+          calc_from: ntc_primary_ch7_raw, calc: "NTC(D)" }
+
+      - { name: ntc_backup_ch1_raw,   offset: 41, type: u16, unit: "-" }
+      - { name: ntc_backup_ch1_c,     offset: 41, type: u16, unit: "°C",
+          calc_from: ntc_backup_ch1_raw, calc: "NTC(D)" }
+      - { name: ntc_backup_ch2_raw,   offset: 43, type: u16, unit: "-" }
+      - { name: ntc_backup_ch2_c,     offset: 43, type: u16, unit: "°C",
+          calc_from: ntc_backup_ch2_raw, calc: "NTC(D)" }
+      - { name: ntc_backup_ch3_raw,   offset: 45, type: u16, unit: "-" }
+      - { name: ntc_backup_ch3_c,     offset: 45, type: u16, unit: "°C",
+          calc_from: ntc_backup_ch3_raw, calc: "NTC(D)" }
+      - { name: ntc_backup_ch4_raw,   offset: 47, type: u16, unit: "-" }
+      - { name: ntc_backup_ch4_c,     offset: 47, type: u16, unit: "°C",
+          calc_from: ntc_backup_ch4_raw, calc: "NTC(D)" }
+      - { name: ntc_backup_ch5_raw,   offset: 49, type: u16, unit: "-" }
+      - { name: ntc_backup_ch5_c,     offset: 49, type: u16, unit: "°C",
+          calc_from: ntc_backup_ch5_raw, calc: "NTC(D)" }
+      - { name: ntc_backup_ch6_raw,   offset: 51, type: u16, unit: "-" }
+      - { name: ntc_backup_ch6_c,     offset: 51, type: u16, unit: "°C",
+          calc_from: ntc_backup_ch6_raw, calc: "NTC(D)" }
+      - { name: ntc_backup_ch7_raw,   offset: 53, type: u16, unit: "-" }
+      - { name: ntc_backup_ch7_c,     offset: 53, type: u16, unit: "°C",
+          calc_from: ntc_backup_ch7_raw, calc: "NTC(D)" }
+
+      # ── Primary heater patch status W56–W62 (7 × u8) ─────────
+      # Bit7 = control mode (0=closed-loop, 1=open-loop)
+      # Bits 6..0 = PWM value
+      - { name: prim_heater_ch1_status, offset: 55, type: u8, unit: "-",
+          bits: [{ name: mode, bit: 7 }, { name: pwm, low: 0, high: 6 }] }
+      - { name: prim_heater_ch2_status, offset: 56, type: u8, unit: "-",
+          bits: [{ name: mode, bit: 7 }, { name: pwm, low: 0, high: 6 }] }
+      - { name: prim_heater_ch3_status, offset: 57, type: u8, unit: "-",
+          bits: [{ name: mode, bit: 7 }, { name: pwm, low: 0, high: 6 }] }
+      - { name: prim_heater_ch4_status, offset: 58, type: u8, unit: "-",
+          bits: [{ name: mode, bit: 7 }, { name: pwm, low: 0, high: 6 }] }
+      - { name: prim_heater_ch5_status, offset: 59, type: u8, unit: "-",
+          bits: [{ name: mode, bit: 7 }, { name: pwm, low: 0, high: 6 }] }
+      - { name: prim_heater_ch6_status, offset: 60, type: u8, unit: "-",
+          bits: [{ name: mode, bit: 7 }, { name: pwm, low: 0, high: 6 }] }
+      - { name: prim_heater_ch7_status, offset: 61, type: u8, unit: "-",
+          bits: [{ name: mode, bit: 7 }, { name: pwm, low: 0, high: 6 }] }
+
+      # ── Backup heater patch status W63–W69 (7 × u8) ──────────
+      - { name: backup_heater_ch1_status, offset: 62, type: u8, unit: "-",
+          bits: [{ name: mode, bit: 7 }, { name: pwm, low: 0, high: 6 }] }
+      - { name: backup_heater_ch2_status, offset: 63, type: u8, unit: "-",
+          bits: [{ name: mode, bit: 7 }, { name: pwm, low: 0, high: 6 }] }
+      - { name: backup_heater_ch3_status, offset: 64, type: u8, unit: "-",
+          bits: [{ name: mode, bit: 7 }, { name: pwm, low: 0, high: 6 }] }
+      - { name: backup_heater_ch4_status, offset: 65, type: u8, unit: "-",
+          bits: [{ name: mode, bit: 7 }, { name: pwm, low: 0, high: 6 }] }
+      - { name: backup_heater_ch5_status, offset: 66, type: u8, unit: "-",
+          bits: [{ name: mode, bit: 7 }, { name: pwm, low: 0, high: 6 }] }
+      - { name: backup_heater_ch6_status, offset: 67, type: u8, unit: "-",
+          bits: [{ name: mode, bit: 7 }, { name: pwm, low: 0, high: 6 }] }
+      - { name: backup_heater_ch7_status, offset: 68, type: u8, unit: "-",
+          bits: [{ name: mode, bit: 7 }, { name: pwm, low: 0, high: 6 }] }
+
+      # ── Imaging module 1 counters (W70–W72) ──────────────────
+      - { name: img_mod1_cmd_rx_count,     offset: 69, type: u8, unit: "cnt" }
+      - { name: img_mod1_cmd_err_count,    offset: 70, type: u8, unit: "cnt" }
+      - { name: img_mod1_pps_miss_count,   offset: 71, type: u8, unit: "cnt" }
+
+      # ── Imaging module 1 temperatures (W73–W76) ──────────────
+      - { name: img_mod1_channel_temp_raw, offset: 72, type: u16, unit: "-" }
+      - { name: img_mod1_channel_temp_c,   offset: 72, type: u16, unit: "°C",
+          calc_from: img_mod1_channel_temp_raw, calc: "SIGNED(D) / 128.0" }
+
+      - { name: img_mod1_fpga_temp_raw,    offset: 74, type: u16, unit: "-" }
+      - { name: img_mod1_fpga_temp_c,      offset: 74, type: u16, unit: "°C",
+          calc_from: img_mod1_fpga_temp_raw,
+          calc: "(D/16 * 503.975/4096) - 273.15" }
+
+      # ── Imaging module 1 GPS time (W77–W84) ──────────────────
+      - { name: img_mod1_gps_sec,     offset: 76, type: u32, unit: "s" }
+      - { name: img_mod1_gps_ms,      offset: 80, type: u16, unit: "ms" }
+      - { name: img_mod1_gps_us,      offset: 82, type: u16, unit: "µs" }
+
+      # ── Imaging module 2 counters (W85–W87) ──────────────────
+      - { name: img_mod2_cmd_rx_count,   offset: 84, type: u8, unit: "cnt" }
+      - { name: img_mod2_cmd_err_count,  offset: 85, type: u8, unit: "cnt" }
+      - { name: img_mod2_pps_miss_count, offset: 86, type: u8, unit: "cnt" }
+
+      # ── Imaging module 2 temperatures (W88–W91) ──────────────
+      - { name: img_mod2_channel_temp_raw, offset: 87, type: u16, unit: "-" }
+      - { name: img_mod2_channel_temp_c,   offset: 87, type: u16, unit: "°C",
+          calc_from: img_mod2_channel_temp_raw, calc: "SIGNED(D) / 128.0" }
+      - { name: img_mod2_fpga_temp_raw,    offset: 89, type: u16, unit: "-" }
+      - { name: img_mod2_fpga_temp_c,      offset: 89, type: u16, unit: "°C",
+          calc_from: img_mod2_fpga_temp_raw,
+          calc: "(D/16 * 503.975/4096) - 273.15" }
+
+      # ── Imaging module 2 GPS time (W92–W99) ──────────────────
+      - { name: img_mod2_gps_sec, offset: 91, type: u32, unit: "s" }
+      - { name: img_mod2_gps_ms,  offset: 95, type: u16, unit: "ms" }
+      - { name: img_mod2_gps_us,  offset: 97, type: u16, unit: "µs" }
+
+      # ── Product & payload status (W100–W102) ─────────────────
+      - { name: product_id,   offset: 99,  type: u8, unit: "-" }
+      - { name: payload_status, offset: 100, type: u8, unit: "-",
+          bits: [
+            { name: mcu_primary,       bit: 0 },
+            { name: op_mode,           low: 1, high: 2 },   # 01=standby, 10=push-broom, 00=min-power, 11=debug
+            { name: uplink_state,      bit: 3 },
+            { name: uplink_ch,         bit: 4 },
+            { name: focus_module_pwr,  bit: 5 },
+            { name: ai_module_pwr,     bit: 6 },
+          ] }
+      - { name: rs422_reset_count, offset: 101, type: u8, unit: "cnt" }
+
+      # ── Voltages (W103–W120) ─────────────────────────────────
+      - { name: mcu_primary_volt_raw,  offset: 102, type: u16, unit: "-" }
+      - { name: mcu_primary_volt_v,    offset: 102, type: u16, unit: "V",
+          calc_from: mcu_primary_volt_raw, calc: "D/4095 * 5" }
+      - { name: mcu_primary_ref_volt_raw, offset: 104, type: u16, unit: "-" }
+      - { name: mcu_primary_ref_volt_v,   offset: 104, type: u16, unit: "V",
+          calc_from: mcu_primary_ref_volt_raw, calc: "D/4095 * 5" }
+      - { name: mcu_backup_volt_raw,   offset: 106, type: u16, unit: "-" }
+      - { name: mcu_backup_volt_v,     offset: 106, type: u16, unit: "V",
+          calc_from: mcu_backup_volt_raw, calc: "D/4095 * 5" }
+      - { name: mcu_backup_ref_volt_raw, offset: 108, type: u16, unit: "-" }
+      - { name: mcu_backup_ref_volt_v,   offset: 108, type: u16, unit: "V",
+          calc_from: mcu_backup_ref_volt_raw, calc: "D/4095 * 5" }
+      - { name: imaging_primary_volt_raw, offset: 110, type: u16, unit: "-" }
+      - { name: imaging_primary_volt_v,   offset: 110, type: u16, unit: "V",
+          calc_from: imaging_primary_volt_raw, calc: "D/4095 * 5" }
+      - { name: imaging_backup_volt_raw,  offset: 112, type: u16, unit: "-" }
+      - { name: imaging_backup_volt_v,    offset: 112, type: u16, unit: "V",
+          calc_from: imaging_backup_volt_raw, calc: "D/4095 * 5" }
+      - { name: imaging_ref_volt_raw,     offset: 114, type: u16, unit: "-" }
+      - { name: imaging_ref_volt_v,       offset: 114, type: u16, unit: "V",
+          calc_from: imaging_ref_volt_raw, calc: "D/4095 * 5" }
+      - { name: ai_volt_raw,              offset: 116, type: u16, unit: "-" }
+      - { name: ai_volt_v,                offset: 116, type: u16, unit: "V",
+          calc_from: ai_volt_raw, calc: "D/4095 * 5" }
+      - { name: ai_ref_volt_raw,          offset: 118, type: u16, unit: "-" }
+      - { name: ai_ref_volt_v,            offset: 118, type: u16, unit: "V",
+          calc_from: ai_ref_volt_raw, calc: "D/4095 * 5" }
+
+      # ── Version numbers & status (W121–W130) ─────────────────
+      - { name: arm_version,           offset: 120, type: u8, unit: "-" }
+      - { name: arm_start_count,       offset: 121, type: u8, unit: "cnt" }
+      - { name: img_motion_coeff_ver,  offset: 122, type: u8, unit: "-" }
+      - { name: fpga_version,          offset: 123, type: u8, unit: "-" }
+      - { name: rs422_uplink_state,    offset: 124, type: u8, unit: "-" }
+      - { name: mcu_uplink_state,      offset: 125, type: u8, unit: "-" }
+      - { name: img_uplink_state,      offset: 126, type: u8, unit: "-" }
+      - { name: uplink_pkt_count,      offset: 127, type: u8, unit: "cnt" }
+      - { name: img_uplink_err_seq,    offset: 128, type: u16, unit: "-" }
+
+      # ── Channel temperature setpoints W131–W137 (7 × u8) ─────
+      - { name: temp_setpoint_ch1, offset: 130, type: u8, unit: "°C" }
+      - { name: temp_setpoint_ch2, offset: 131, type: u8, unit: "°C" }
+      - { name: temp_setpoint_ch3, offset: 132, type: u8, unit: "°C" }
+      - { name: temp_setpoint_ch4, offset: 133, type: u8, unit: "°C" }
+      - { name: temp_setpoint_ch5, offset: 134, type: u8, unit: "°C" }
+      - { name: temp_setpoint_ch6, offset: 135, type: u8, unit: "°C" }
+      - { name: temp_setpoint_ch7, offset: 136, type: u8, unit: "°C" }
+
+      # ── Channel threshold & max power W138–W145 ──────────────
+      - { name: channel_threshold,        offset: 137, type: u8, unit: "°C" }
+      - { name: ch1_max_closed_pwr_pct,   offset: 138, type: u8, unit: "%" }
+      - { name: ch2_max_closed_pwr_pct,   offset: 139, type: u8, unit: "%" }
+      - { name: ch3_max_closed_pwr_pct,   offset: 140, type: u8, unit: "%" }
+      - { name: ch4_max_closed_pwr_pct,   offset: 141, type: u8, unit: "%" }
+      - { name: ch5_max_closed_pwr_pct,   offset: 142, type: u8, unit: "%" }
+      - { name: ch6_max_closed_pwr_pct,   offset: 143, type: u8, unit: "%" }
+      - { name: ch7_max_closed_pwr_pct,   offset: 144, type: u8, unit: "%" }
+
+      # ── Heating abnormality counters W146–W149 ──────────────
+      - { name: heat_abnormal_ctr1, offset: 145, type: u8, unit: "-" }
+      - { name: heat_abnormal_ctr2, offset: 146, type: u8, unit: "-" }
+      - { name: heat_abnormal_ctr3, offset: 147, type: u8, unit: "-" }
+      - { name: heat_abnormal_ctr4, offset: 148, type: u8, unit: "-" }
+
+      # ── Focus assembly W150–W157 ────────────────────────────
+      - { name: focus_assembly_status, offset: 149, type: u8, unit: "-" }
+      - { name: target_grating_scale,  offset: 150, type: u24, unit: "-" }
+      - { name: reserved_w154,         offset: 153, type: u8, unit: "-" }
+      - { name: current_grating_scale, offset: 154, type: u24, unit: "-" }
+
+      # ── Visible-light module & imaging module 1 status W158–W163
+      - { name: vis_module_pwr_status, offset: 157, type: u8, unit: "-" }
+      - { name: img_mod1_serial,       offset: 158, type: u8, unit: "-" }
+      - { name: img_mod1_status,       offset: 159, type: u8, unit: "-" }
+      - { name: img_mod1_fw_version,   offset: 160, type: u24, unit: "-" }
+
+      # ── Imaging module 1 parameters W164–W190 ────────────────
+      - { name: img_mod1_spectral_stage1, offset: 163, type: u8, unit: "-" }
+      - { name: img_mod1_spectral_stage2, offset: 164, type: u8, unit: "-" }
+      - { name: img_mod1_spectral_stage3, offset: 165, type: u8, unit: "-" }
+      - { name: img_mod1_gain,            offset: 166, type: u8, unit: "-" }
+      - { name: img_mod1_tdi_period_raw,  offset: 167, type: u24, unit: "-" }
+      - { name: img_mod1_exposure_raw,    offset: 170, type: u24, unit: "-" }
+      - { name: img_mod1_p_band_pos,      offset: 173, type: u16, unit: "-" }
+      - { name: img_mod1_p_band_rows,     offset: 175, type: u8,  unit: "-" }
+      - { name: img_mod1_b1_band_pos,     offset: 176, type: u16, unit: "-" }
+      - { name: img_mod1_b1_band_rows,    offset: 178, type: u8,  unit: "-" }
+      - { name: img_mod1_b2_band_pos,     offset: 179, type: u16, unit: "-" }
+      - { name: img_mod1_b2_band_rows,    offset: 181, type: u8,  unit: "-" }
+      - { name: img_mod1_b3_band_pos,     offset: 182, type: u16, unit: "-" }
+      - { name: img_mod1_b3_band_rows,    offset: 184, type: u8,  unit: "-" }
+      - { name: img_mod1_b4_band_pos,     offset: 185, type: u16, unit: "-" }
+      - { name: img_mod1_b4_band_rows,    offset: 187, type: u8,  unit: "-" }
+      - { name: img_mod1_fw_reupload_pkt_count, offset: 188, type: u16, unit: "cnt" }
+      - { name: img_mod1_fpn_reupload_pkt_count, offset: 190, type: u16, unit: "cnt" }
+      - { name: img_mod1_adc_gain,        offset: 192, type: u8, unit: "-" }
+      - { name: img_mod1_dark_subtract,   offset: 193, type: u8, unit: "-" }
+      - { name: img_mod1_ob_value,        offset: 194, type: u16, unit: "-" }
+      - { name: img_mod1_black_level,     offset: 196, type: u16, unit: "-" }
+
+      # ── Imaging module 2 status W199–W207 ────────────────────
+      - { name: img_mod2_serial,     offset: 198, type: u8,  unit: "-" }
+      - { name: img_mod2_status,     offset: 199, type: u8,  unit: "-" }
+      - { name: img_mod2_fw_version, offset: 200, type: u24, unit: "-" }
+      - { name: img_mod2_spectral_stage1, offset: 203, type: u8, unit: "-" }
+      - { name: img_mod2_spectral_stage2, offset: 204, type: u8, unit: "-" }
+      - { name: img_mod2_spectral_stage3, offset: 205, type: u8, unit: "-" }
+      - { name: img_mod2_gain,       offset: 206, type: u8,  unit: "-" }
+
+      # ── Imaging module 2 window config W208–W218 ────────────
+      - { name: img_mod2_tdi_period_raw, offset: 207, type: u24, unit: "-" }
+      - { name: img_mod2_exposure_raw,   offset: 210, type: u24, unit: "-" }
+      - { name: img_mod2_p_band_pos,     offset: 213, type: u16, unit: "-" }
+      - { name: img_mod2_p_band_rows,    offset: 215, type: u8,  unit: "-" }
+      - { name: img_mod2_b1_band_pos,    offset: 216, type: u16, unit: "-" }
+      - { name: img_mod2_b1_band_rows,   offset: 218, type: u8,  unit: "-" }
+      - { name: img_mod2_b2_band_pos,    offset: 219, type: u16, unit: "-" }
+      - { name: img_mod2_b2_band_rows,   offset: 221, type: u8,  unit: "-" }
+      - { name: img_mod2_b3_band_pos,    offset: 222, type: u16, unit: "-" }
+      - { name: img_mod2_b3_band_rows,   offset: 224, type: u8,  unit: "-" }
+      - { name: img_mod2_b4_band_pos,    offset: 225, type: u16, unit: "-" }
+      - { name: img_mod2_b4_band_rows,   offset: 227, type: u8,  unit: "-" }
+
+      # ── Imaging module 2 re-upload counters & internal values ─
+      - { name: img_mod2_fw_reupload_pkt_count,  offset: 228, type: u16, unit: "cnt" }
+      - { name: img_mod2_fpn_reupload_pkt_count, offset: 230, type: u16, unit: "cnt" }
+      - { name: img_mod2_adc_gain,       offset: 232, type: u8,  unit: "-" }
+      - { name: img_mod2_dark_subtract,  offset: 233, type: u8,  unit: "-" }
+      - { name: img_mod2_ob_value,       offset: 234, type: u16, unit: "-" }
+      - { name: img_mod2_black_level,    offset: 236, type: u16, unit: "-" }
+      # Payload ends at offset 238 (exclusive). The SUM checksum byte and
+      # the frame trailer are NOT part of the payload.

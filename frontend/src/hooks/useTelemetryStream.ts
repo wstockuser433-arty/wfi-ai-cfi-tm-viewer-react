@@ -61,7 +61,7 @@ export function useTelemetryStream(url: string): void {
     };
 
     connect();
-
+    console.log("Connecting WS to:", WS_URL);
     return () => {
       aliveRef.current = false;
 

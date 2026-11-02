@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Any
 
 
@@ -11,6 +11,7 @@ class DecodedField(BaseModel):
 
 
 class DecodedPacket(BaseModel):
+    # ─── Core ──────────────────────────────────────────────────
     cc: int
     apid: int
     apid_name: str
@@ -25,16 +26,19 @@ class DecodedPacket(BaseModel):
     fields: dict[str, DecodedField]
     timestamp: float
 
-    # PUS-specific
+    # ─── PUS-specific (optional) ───────────────────────────────
     service_type: int | None = None
     service_subtype: int | None = None
 
-    # EBOX-specific
+    # ─── EBOX-specific (optional) ──────────────────────────────
     unit_id: int | None = None
     unit_sub_id: int | None = None
     sub_hdr_value: int | None = None
     sub_hdr_label: str | None = None
     seq_flags: int | None = None
+
+    # Tolerate extra keys emitted by future decoders
+    model_config = ConfigDict(extra="ignore")
 
     def model_dump_json_safe(self) -> str:
         return self.model_dump_json()
