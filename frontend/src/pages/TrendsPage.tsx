@@ -38,18 +38,26 @@ export function TrendsPage() {
   // Initialize with default fields once meta loads.
   // We select fields that produce numeric values even when ADC is 0,
   // so the chart isn't blank while testing with the simulator.
- useEffect(() => {
-  if (selected.size === 0 && availableParams.length > 0) {
-    const defaults = availableParams
-      .filter((p) => 
-        p.key.includes("power_conv_chip_temp_c") ||
-        p.key.includes("mcu_primary_current_a") ||
-        p.key.includes("ntc_primary_ch1_c")
-      )
-      .map((p) => p.key);
-    if (defaults.length > 0) setSelected(new Set(defaults));
-  }
-}, [availableParams, selected.size]);
+  // Initialize with 3 default fields once meta loads.
+  // Force the defaults on first load so it always selects these 3.
+  const [hasInitialized, setHasInitialized] = useState(false);
+
+  useEffect(() => {
+    if (!hasInitialized && availableParams.length > 0) {
+      const defaults = availableParams
+        .filter((p) => 
+          p.key.includes("power_conv_chip_temp_c") ||
+          p.key.includes("mcu_primary_current_a") ||
+          p.key.includes("ntc_primary_ch1_c")
+        )
+        .map((p) => p.key);
+      
+      if (defaults.length > 0) {
+        setSelected(new Set(defaults));
+      }
+      setHasInitialized(true);
+    }
+  }, [availableParams, hasInitialized]);
 
   const toggle = (key: string) => {
     const next = new Set(selected);
