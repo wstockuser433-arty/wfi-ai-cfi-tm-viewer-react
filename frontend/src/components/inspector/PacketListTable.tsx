@@ -3,9 +3,13 @@ import { useTelemetry } from "@/store/telemetryStore";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { packetId } from "@/types/packet";
 
 export function PacketListTable() {
   const packets = useTelemetry((s) => s.packets);
+  const selectedId = useTelemetry((s) => s.selectedPacketId);
+  const setSelectedId = useTelemetry((s) => s.setSelectedPacketId);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(25);
 
@@ -41,14 +45,14 @@ export function PacketListTable() {
           <span>Page {page + 1} of {totalPages}</span>
           <div className="flex gap-1">
             <button
-              onClick={() => setPage(p => Math.max(0, p - 1))}
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
               className="p-1 hover:bg-white/10 rounded disabled:opacity-50"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
-              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page === totalPages - 1}
               className="p-1 hover:bg-white/10 rounded disabled:opacity-50"
             >
@@ -69,28 +73,38 @@ export function PacketListTable() {
             </tr>
           </thead>
           <tbody>
-            {currentBatch.map((p, i) => (
-              <tr
-                key={`${p.timestamp}-${p.seq}-${i}`}
-                className="border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors"
-              >
-                <td className="px-3 py-1.5 mono text-secondary">
-                  {new Date(p.timestamp * 1000).toLocaleTimeString()}
-                </td>
-                <td className="px-3 py-1.5 mono text-primary">
-                  0x{p.apid.toString(16).toUpperCase()}
-                </td>
-                <td className="px-3 py-1.5">
-                  <span className="text-muted">{p.subsystem}</span> /{" "}
-                  <span className="text-slate-200">{p.card}</span>
-                </td>
-                <td className="px-3 py-1.5 text-right">
-                  <Badge variant={p.crc_ok ? "ok" : "crit"}>
-                    {p.crc_ok ? "OK" : "FAIL"}
-                  </Badge>
-                </td>
-              </tr>
-            ))}
+            {currentBatch.map((p, i) => {
+              const id = packetId(p);
+              const isSelected = id === selectedId;
+              return (
+                <tr
+                  key={`${id}-${i}`}
+                  onClick={() => setSelectedId(id)}
+                  className={cn(
+                    "border-b border-white/5 cursor-pointer transition-colors",
+                    isSelected
+                      ? "bg-accent/10 border-l-2 border-l-accent"
+                      : "hover:bg-white/5"
+                  )}
+                >
+                  <td className="px-3 py-1.5 mono text-secondary">
+                    {new Date(p.timestamp * 1000).toLocaleTimeString()}
+                  </td>
+                  <td className="px-3 py-1.5 mono text-primary">
+                    0x{p.apid.toString(16).toUpperCase()}
+                  </td>
+                  <td className="px-3 py-1.5">
+                    <span className="text-muted">{p.subsystem}</span> /{" "}
+                    <span className="text-slate-200">{p.card}</span>
+                  </td>
+                  <td className="px-3 py-1.5 text-right">
+                    <Badge variant={p.crc_ok ? "ok" : "crit"}>
+                      {p.crc_ok ? "OK" : "FAIL"}
+                    </Badge>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

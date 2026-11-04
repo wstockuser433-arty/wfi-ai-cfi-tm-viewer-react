@@ -25,18 +25,22 @@ interface TelemetryState {
   totalReceived: number;
   meta: MetaResponse | null;
 
+  // ⭐ NEW: selection for Inspector page
+  selectedPacketId: string | null;
+
   ingest: (batch: DecodedPacket[]) => void;
   setLink: (s: LinkState) => void;
   setMeta: (m: MetaResponse) => void;
   clearAlarms: () => void;
   reset: () => void;
+  setSelectedPacketId: (id: string | null) => void;
 }
 
 const MAX_PACKETS = 1000;
 const MAX_ALARMS = 100;
 
 export const useTelemetry = create<TelemetryState>((set) => ({
-  packets: [],
+    packets: [],
   latestByApid: {},
   latestByParam: {},
   alarms: [],
@@ -44,7 +48,10 @@ export const useTelemetry = create<TelemetryState>((set) => ({
   lastPacketAt: 0,
   totalReceived: 0,
   meta: null,
+  selectedPacketId: null,
 
+  setSelectedPacketId: (id) => set({ selectedPacketId: id }),
+  
   ingest: (batch) =>
     set((state) => {
       if (!batch || batch.length === 0) {

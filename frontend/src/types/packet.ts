@@ -33,3 +33,8 @@ export interface DecodedPacket {
   sub_hdr_label?: string;
   seq_flags?: number;
 }
+
+
+export function packetId(p: DecodedPacket): string {
+  return `${p.timestamp}-${p.apid}-${p.seq}`;
+}

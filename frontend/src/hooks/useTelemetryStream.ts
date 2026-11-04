@@ -10,15 +10,11 @@ interface PendingPacket {
 }
 
 export function useTelemetryStream(url: string = WS_URL): void {
-  const ingest = useTelemetry((s) => s.ingest);
-  const setLink = useTelemetry((s) => s.setLink);
-
+  // ⚠️ Grab actions via getState() to avoid triggering re-renders
   const wsRef = useRef<WebSocket | null>(null);
   const retryRef = useRef<number>(0);
   const timerRef = useRef<number | null>(null);
   const aliveRef = useRef<boolean>(true);
-
-  // Reassembly buffer: packet_id → PendingPacket
   const pendingRef = useRef<Map<string, PendingPacket>>(new Map());
 
   useEffect(() => {
@@ -27,7 +23,9 @@ export function useTelemetryStream(url: string = WS_URL): void {
     const connect = (): void => {
       if (!aliveRef.current) return;
 
-      setLink("connecting");
+      const store = useTelemetry.getState();
+      store.setLink("connecting");
+
       const ws = new WebSocket(url);
       wsRef.current = ws;
 
@@ -37,7 +35,7 @@ export function useTelemetryStream(url: string = WS_URL): void {
           return;
         }
         retryRef.current = 0;
-        setLink("connected");
+        useTelemetry.getState().setLink("connected");
       };
 
       ws.onmessage = (evt) => {
@@ -49,7 +47,6 @@ export function useTelemetryStream(url: string = WS_URL): void {
           return;
         }
 
-        // ─── Reassembly protocol ────────────────────────────────
         if (msg.type === "packet_begin") {
           pendingRef.current.set(msg.packet_id, {
             meta: msg.packet ?? {},
@@ -62,10 +59,7 @@ export function useTelemetryStream(url: string = WS_URL): void {
 
         if (msg.type === "fields") {
           const buf = pendingRef.current.get(msg.packet_id);
-          if (!buf) {
-            console.warn("[ws] fields for unknown packet:", msg.packet_id);
-            return;
-          }
+          if (!buf) return;
           Object.assign(buf.fields, msg.fields ?? {});
           buf.received_parts += 1;
           return;
@@ -73,13 +67,9 @@ export function useTelemetryStream(url: string = WS_URL): void {
 
         if (msg.type === "packet_end") {
           const buf = pendingRef.current.get(msg.packet_id);
-          if (!buf) {
-            console.warn("[ws] end for unknown packet:", msg.packet_id);
-            return;
-          }
+          if (!buf) return;
           pendingRef.current.delete(msg.packet_id);
 
-          // Assemble the final DecodedPacket
           const packet: DecodedPacket = {
             ...(buf.meta as DecodedPacket),
             fields: buf.fields as DecodedPacket["fields"],
@@ -87,31 +77,17 @@ export function useTelemetryStream(url: string = WS_URL): void {
             timestamp: msg.t ?? buf.meta.timestamp ?? Date.now() / 1000,
           };
 
-          ingest([packet]);
+          useTelemetry.getState().ingest([packet]);
           return;
         }
 
         if (msg.type === "done") {
-          setLink("disconnected");
+          useTelemetry.getState().setLink("disconnected");
           return;
         }
 
-        // ─── Legacy single-frame protocol (fallback) ────────────
         if (Array.isArray(msg.packets) && msg.packets.length > 0) {
-          ingest(msg.packets as DecodedPacket[]);
-        }
-
-        // Ensure buf exists in your component/module scope
-        let buf = null; 
-
-        // Inside your message handler:
-        if (msg.type === "packet_begin") {
-          buf = { packet_id: msg.packet_id, fields: {} };
-          console.log(`[ws] begin ${msg.packet_id} | ${msg.packet.subsystem}/${msg.packet.card}`);
-        }
-
-        if (msg.type === "packet_end") {
-          console.log(`[ws] end   ${msg.packet_id} | ${msg.total_parts} parts | ${Object.keys(buf?.fields ?? {}).length} fields`);
+          useTelemetry.getState().ingest(msg.packets as DecodedPacket[]);
         }
       };
 
@@ -119,7 +95,7 @@ export function useTelemetryStream(url: string = WS_URL): void {
 
       ws.onclose = () => {
         if (!aliveRef.current) return;
-        setLink("disconnected");
+        useTelemetry.getState().setLink("disconnected");
         const delay = Math.min(500 * 2 ** retryRef.current, 5000);
         retryRef.current += 1;
         timerRef.current = window.setTimeout(connect, delay);
@@ -141,5 +117,5 @@ export function useTelemetryStream(url: string = WS_URL): void {
       wsRef.current = null;
       pendingRef.current.clear();
     };
-  }, [url, ingest, setLink]);
+  }, [url]); // ⭐ Only depends on `url` — nothing else
 }

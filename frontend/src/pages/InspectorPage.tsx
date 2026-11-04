@@ -1,30 +1,30 @@
 import { PacketListTable } from "@/components/inspector/PacketListTable";
-import { PacketDecoder } from "@/components/live/PacketDecoder";
+import { PacketDetailsPanel } from "@/components/inspector/PacketDetailsPanel";
 import { Card } from "@/components/ui/card";
 import { UploadDumpButton } from "@/components/inspector/UploadDumpButton";
 
 export function InspectorPage() {
   return (
     <div className="flex flex-col h-full space-y-4">
-      {/* Header */}
+      {/* Header bar */}
       <Card className="flex items-center justify-between shrink-0">
         <div>
           <div className="text-sm font-semibold">Packet Inspector</div>
           <div className="text-[11px] text-muted">
-            Hex dump and decoded fields for the latest packet of each APID
+            Select a packet from the list to inspect its headers, source data, and raw dump
           </div>
         </div>
         <UploadDumpButton />
       </Card>
 
-      {/* Paginated Table (takes ~400px, scrolls internally) */}
-      <div className="shrink-0 h-[380px]">
-        <PacketListTable />
-      </div>
-
-      {/* Packet Decoder (fills remaining space) */}
-      <div className="flex-1 min-h-[400px]">
-        <PacketDecoder />
+      {/* Split view: table on left, details on right */}
+      <div className="flex-1 min-h-0 grid grid-cols-[400px_1fr] gap-4">
+        <div className="min-h-0">
+          <PacketListTable />
+        </div>
+        <div className="min-h-0">
+          <PacketDetailsPanel />
+        </div>
       </div>
     </div>
   );

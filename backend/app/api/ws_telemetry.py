@@ -95,16 +95,28 @@ async def ws_telemetry(ws: WebSocket):
     if manager is None:
         await ws.close(code=1011, reason="ingestion not ready")
         return
+
     q = manager.subscribe()
     try:
         while True:
-            pkt = await q.get()
+            try:
+                pkt = await q.get()
+            except asyncio.CancelledError:
+                break
+
             try:
                 await _send_packet_chunked(ws, pkt, pkt.timestamp)
+            except (RuntimeError, WebSocketDisconnect):
+                # Socket was closed by the client mid-send — stop gracefully.
+                # No log spam; this is expected on page refresh.
+                break
             except Exception:
-                # Never kill the WS on a per-packet failure
+                # Genuine error — log once, don't spam.
                 import logging
-                logging.exception("chunked send failed")
+                logging.getLogger(__name__).warning(
+                    "WS send error (once): %s", exc_info=True
+                )
+                break
     except WebSocketDisconnect:
         pass
     finally:
