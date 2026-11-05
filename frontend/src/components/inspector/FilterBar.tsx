@@ -1,9 +1,11 @@
+
 import { useMemo } from "react";
 import { X } from "lucide-react";
 import { useFilters } from "@/store/filterStore";
 import { useTelemetry } from "@/store/telemetryStore";
 import { SUBSYSTEM_COLORS } from "@/lib/colors";
 import { cn } from "@/lib/utils";
+import { CardSpec, MetaResponse } from "@/types/meta";
 
 const SUBSYSTEM_LABELS: Record<string, string> = {
   CAMERA: "Camera Subsystem",
@@ -13,6 +15,14 @@ const SUBSYSTEM_LABELS: Record<string, string> = {
   CTPU_R: "CTPU (Redundant)",
   UNIT:   "Unit / Mode",
 };
+
+function findCard(meta: MetaResponse, cardKey: string): CardSpec | undefined {
+  if (meta.cards?.[cardKey]) return meta.cards[cardKey];
+  for (const sub of Object.values(meta.subsystems ?? {})) {
+    if (sub.cards?.[cardKey]) return sub.cards[cardKey];
+  }
+  return undefined;
+}
 
 export function FilterBar() {
   const meta = useTelemetry((s) => s.meta);
@@ -81,7 +91,7 @@ export function FilterBar() {
 
       {/* Card chips (active filters) */}
       {Array.from(cards).map((c) => {
-        const card = meta.cards?.[c];
+        const card = findCard(meta, c);
         const label = card?.label ?? c;
         return (
           <button

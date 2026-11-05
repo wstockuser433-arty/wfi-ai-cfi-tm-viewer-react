@@ -13,37 +13,27 @@ export function TrendsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const availableParams = useMemo(() => {
-  if (!meta?.subsystems) return [];
-  const out: { key: string; label: string; color: string }[] = [];
-  
-  for (const [subKey, sub] of Object.entries(meta.subsystems)) {
-    for (const [cardKey, card] of Object.entries(sub.cards ?? {})) {
-      for (const f of card.fields ?? []) {
-        // Skip raw ADC counts — show physical/calc values only
-        if (f.name.endsWith("_raw")) continue;
-        // Skip bitfields (they're sub-fields of a parent u8)
-        if (f.name.includes(".")) continue;
-        
-        out.push({
-          key: `${card.apid}:${f.name}`,
-          label: `${subKey}/${cardKey}.${f.name}`,
-          color: subsystemColor(subKey, isDark),
-        });
+    if (!meta?.subsystems) return [];
+    const out: { key: string; label: string; color: string }[] = [];
+    
+    for (const [subKey, sub] of Object.entries(meta.subsystems)) {
+      for (const [cardKey, card] of Object.entries(sub.cards ?? {})) {
+        for (const f of card.fields ?? []) {
+          if (f.name.endsWith("_raw")) continue;
+          if (f.name.includes(".")) continue;
+          out.push({
+            key: `${card.apid}:${f.name}`,
+            label: `${subKey}/${cardKey}.${f.name}`,
+            color: subsystemColor(subKey, isDark),
+          });
+        }
       }
     }
-  }
-  return out;
-}, [meta, isDark]);
-
-  // Initialize with default fields once meta loads.
-  // We select fields that produce numeric values even when ADC is 0,
-  // so the chart isn't blank while testing with the simulator.
-  // Initialize with 3 default fields once meta loads.
-  // Force the defaults on first load so it always selects these 3.
-  const [hasInitialized, setHasInitialized] = useState(false);
+    return out;
+  }, [meta, isDark]);
 
   useEffect(() => {
-    if (!hasInitialized && availableParams.length > 0) {
+    if (selected.size === 0 && availableParams.length > 0) {
       const defaults = availableParams
         .filter((p) => 
           p.key.includes("power_conv_chip_temp_c") ||
@@ -51,13 +41,9 @@ export function TrendsPage() {
           p.key.includes("ntc_primary_ch1_c")
         )
         .map((p) => p.key);
-      
-      if (defaults.length > 0) {
-        setSelected(new Set(defaults));
-      }
-      setHasInitialized(true);
+      if (defaults.length > 0) setSelected(new Set(defaults));
     }
-  }, [availableParams, hasInitialized]);
+  }, [availableParams, selected.size]);
 
   const toggle = (key: string) => {
     const next = new Set(selected);
@@ -69,7 +55,7 @@ export function TrendsPage() {
     <div className="space-y-4">
       <Card>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-primary">Parameter Selection</h3>
+          <h3 className="text-sm font-semibold">Parameter Selection</h3>
           <span className="text-[11px] text-tertiary">
             {selected.size} selected · {availableParams.length} available
           </span>

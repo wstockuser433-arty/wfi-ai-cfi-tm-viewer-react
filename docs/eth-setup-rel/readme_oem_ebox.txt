@@ -58,3 +58,8 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl enable --now ebox-pty.service
 sudo systemctl status ebox-pty.service
+
+
+# Frontend error check
+cd frontend
+npx tsc --noEmit

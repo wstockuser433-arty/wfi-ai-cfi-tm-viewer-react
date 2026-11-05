@@ -60,6 +60,15 @@ export function PacketDecoder() {
 
   if (!meta) return <Card>Loading meta…</Card>;
 
+function apidLabel(a: { apid: number; subsystem: string; card: string; unit_sub_id?: number; service?: number; subservice?: number }): string {
+  const parts: string[] = [];
+  if (a.unit_sub_id !== undefined) parts.push(`Sub 0x${a.unit_sub_id.toString(16).toUpperCase()}`);
+  if (a.service !== undefined) parts.push(`Svc 0x${a.service.toString(16).toUpperCase()}`);
+  if (a.subservice !== undefined) parts.push(`SubSvc 0x${a.subservice.toString(16).toUpperCase()}`);
+  parts.push(`${a.subsystem}/${a.card}`);
+  return parts.join(" · ");
+}
+
   return (
     <Card className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-3">
@@ -86,10 +95,7 @@ export function PacketDecoder() {
           ) : (
             availableApids.map((a) => (
               <option key={a.apid} value={a.apid}>
-                Sub 0x{a.unit_sub_id.toString(16).toUpperCase()} ·{" "}
-                Svc 0x{a.service.toString(16).toUpperCase()} ·{" "}
-                SubSvc 0x{a.subservice.toString(16).toUpperCase()} ·{" "}
-                {a.subsystem}/{a.card}
+                {apidLabel(a)}
               </option>
             ))
           )}

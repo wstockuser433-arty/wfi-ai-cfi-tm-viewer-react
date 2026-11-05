@@ -1,10 +1,9 @@
 export interface DecodedField {
-  value: number | string;
+  value: number | string | null;
   unit: string;
   limits: [number | null, number | null];
   status: "OK" | "WARN" | "CRIT";
-  // Enum labels: keys are stringified integers (JSON has no int keys)
-  enum?: Record<string, string>;
+  enum?: Record<string, string> | null;
 }
 
 export interface DecodedPacket {
@@ -21,20 +20,17 @@ export interface DecodedPacket {
   raw_hex: string;
   fields: Record<string, DecodedField>;
   timestamp: number;
-
-  // PUS-specific (present only when decoded by PusDecoder)
-  service_type?: number;
-  service_subtype?: number;
-
-  // EBOX-specific
+  // EBOX specific
   unit_id?: number;
   unit_sub_id?: number;
+  service_type?: number;
+  service_subtype?: number;
   sub_hdr_value?: number;
   sub_hdr_label?: string;
   seq_flags?: number;
 }
 
-
+// ⭐ Helper to generate a stable ID for a packet
 export function packetId(p: DecodedPacket): string {
   return `${p.timestamp}-${p.apid}-${p.seq}`;
 }

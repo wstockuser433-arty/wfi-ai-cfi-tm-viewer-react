@@ -16,9 +16,19 @@ import { InspectorPage } from "./pages/InspectorPage";
 // import { PlaybackPage } from "./pages/PlaybackPage";
 // import { LinksPage } from "./pages/LinksPage";
 import { LogsPopup } from "./components/logs/LogsPopup";
+import { StandalonePacketView } from "./pages/StandalonePacketView"; 
 
 
 export default function App() {
+  // ⭐ Standalone route — check before rendering the full app shell
+  if (window.location.pathname.startsWith("/standalone/")) {
+    return (
+      <ErrorBoundary>
+        <StandalonePacketView />
+      </ErrorBoundary>
+    );
+  }
+  
   useTheme();  // applies theme to <html> and listens for OS changes
   useMeta();
 

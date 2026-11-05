@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { API_BASE } from "@/lib/api";
-import { Download, Database, RefreshCw, Loader2 } from "lucide-react";
+import { Download, Database, RefreshCw, Loader2, ExternalLink } from "lucide-react";
 
 interface PacketSummary {
   id: number;
@@ -19,7 +19,7 @@ export function StoragePage() {
   const [end, setEnd] = useState(() => toLocalInput(new Date()));
   const [busy, setBusy] = useState(false);
   const [packets, setPackets] = useState<PacketSummary[]>([]);
-  const [msg, setMsg] = useState<string>("");
+  const [msg, setMsg] = useState("");
 
   async function query() {
     setBusy(true);
@@ -47,22 +47,23 @@ export function StoragePage() {
     const rows = [
       ["ts", "apid", "subsystem", "card", "crc_ok"],
       ...(j.packets ?? []).map((p: PacketSummary) => [
-        p.ts,
-        p.apid,
-        p.subsystem,
-        p.card,
-        p.crc_ok,
+        p.ts, p.apid, p.subsystem, p.card, p.crc_ok,
       ]),
     ];
     const csv = rows.map((r) => r.join(",")).join("\n");
     downloadBlob(csv, `tm-export-${Date.now()}.csv`, "text/csv");
   }
 
+  function openStandalone(packetId: number) {
+    // ⭐ Open in a new window
+    window.open(`/standalone/packet/${packetId}`, "_blank", "width=1200,height=900");
+  }
+
   return (
     <div className="space-y-4">
       <Card>
         <div className="flex items-center gap-2 mb-3">
-          <Database className="w-4 h-4 text-accent" />
+          <Database className="w-4 h-4 text-accent-cyan" />
           <h3 className="text-sm font-semibold">TM Storage Explorer</h3>
         </div>
 
@@ -102,35 +103,49 @@ export function StoragePage() {
           <div className="text-sm font-semibold mb-3">
             Results <span className="text-muted text-xs">({packets.length} packets)</span>
           </div>
-          <div className="overflow-auto max-h-[500px]">
-            <table className="w-full text-xs bg-white/5">
+          <div className="overflow-auto max-h-[600px]">
+            <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-subtle text-[10px] text-tertiary uppercase tracking-wider">
+                <tr className="border-b border-white/5 text-[10px] text-muted uppercase tracking-wider sticky top-0 bg-space-800">
                   <th className="text-left py-2 px-2">Time</th>
                   <th className="text-left py-2 px-2">APID</th>
                   <th className="text-left py-2 px-2">Subsystem</th>
                   <th className="text-left py-2 px-2">Card</th>
                   <th className="text-right py-2 px-2">CRC</th>
+                  <th className="text-right py-2 px-2">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {packets.slice(0, 500).map((p) => (
                   <tr
                     key={p.id}
-                    className="border-b border-subtle hover:bg-white/5 transition-colors"
+                    className="border-b border-white/5 hover:bg-white/5 cursor-pointer"
+                    onClick={() => openStandalone(p.id)}
                   >
-                    <td className="mono py-1.5 px-2 text-secondary">
+                    <td className="mono py-1.5 px-2 text-muted">
                       {new Date(p.ts).toLocaleTimeString()}
                     </td>
-                    <td className="mono py-1.5 px-2 text-primary">
+                    <td className="mono py-1.5 px-2">
                       0x{p.apid.toString(16).toUpperCase()}
                     </td>
-                    <td className="py-1.5 px-2 text-primary">{p.subsystem}</td>
-                    <td className="py-1.5 px-2 text-tertiary">{p.card}</td>
+                    <td className="py-1.5 px-2">{p.subsystem}</td>
+                    <td className="py-1.5 px-2 text-muted">{p.card}</td>
                     <td className="py-1.5 px-2 text-right">
                       <Badge variant={p.crc_ok ? "ok" : "crit"}>
                         {p.crc_ok ? "OK" : "FAIL"}
                       </Badge>
+                    </td>
+                    <td className="py-1.5 px-2 text-right">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openStandalone(p.id);
+                        }}
+                        className="text-accent hover:underline flex items-center gap-1 justify-end w-full"
+                        title="Open in new window"
+                      >
+                        <ExternalLink className="w-3 h-3" /> Inspect
+                      </button>
                     </td>
                   </tr>
                 ))}

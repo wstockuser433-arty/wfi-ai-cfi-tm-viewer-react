@@ -76,7 +76,7 @@ export function useTelemetryStream(url: string = WS_URL): void {
             raw_hex: msg.raw_hex ?? "",
             timestamp: msg.t ?? buf.meta.timestamp ?? Date.now() / 1000,
           };
-
+          console.log("PACKET KEYS:", Object.keys(packet.fields).slice(0, 5));
           useTelemetry.getState().ingest([packet]);
           return;
         }
@@ -103,7 +103,7 @@ export function useTelemetryStream(url: string = WS_URL): void {
     };
 
     connect();
-
+    // console.log("PACKET KEYS:", Object.keys(packet.fields).slice(0, 5));
     return () => {
       aliveRef.current = false;
       if (timerRef.current !== null) {

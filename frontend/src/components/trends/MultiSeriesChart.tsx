@@ -7,6 +7,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
+  Legend,
 } from "recharts";
 import { useTelemetry } from "@/store/telemetryStore";
 import { useIsDark } from "@/hooks/useIsDark";
@@ -33,6 +34,7 @@ export function MultiSeriesChart({ selectedKeys }: Props) {
   const palette = isDark ? PALETTE_DARK : PALETTE_LIGHT;
 
   const { data, series } = useMemo(() => {
+    // 1. Map selected keys to APID and field names
     const wanted = new Map<number, { field: string; key: string }>();
     const seriesMeta: { key: string; label: string; color: string }[] = [];
     let idx = 0;
@@ -48,16 +50,18 @@ export function MultiSeriesChart({ selectedKeys }: Props) {
       });
     }
 
+    // 2. Aggregate into 0.5s buckets
     const bucketMap = new Map<number, Record<string, number>>();
 
     for (const p of packets as DecodedPacket[]) {
       const w = wanted.get(p.apid);
       if (!w) continue;
-      const f = p.fields[w.field];
       
+      const f = p.fields[w.field];
       if (!f || f.value === null || f.value === undefined) continue;
       if (typeof f.value !== "number" || Number.isNaN(f.value)) continue;
       
+      // Bucket every 0.5s
       const bucket = Math.floor(p.timestamp * 2) / 2;
       const entry = bucketMap.get(bucket) ?? { t: bucket };
       entry[w.field] = f.value;
@@ -72,15 +76,15 @@ export function MultiSeriesChart({ selectedKeys }: Props) {
   }, [packets, selectedKeys, palette]);
 
   if (selectedKeys.length === 0) {
-  return (
-    <div className="h-[400px] flex items-center justify-center text-sm text-muted">
-      Select parameters above to see trends
-    </div>
-  );
-}
+    return (
+      <div className="h-[400px] flex items-center justify-center text-sm text-muted">
+        Select parameters above to see trends
+      </div>
+    );
+  }
 
   return (
-    <div className="h-[400px]" key={selectedKeys.join(",")}>
+    <div className="h-[400px]">
       <ResponsiveContainer>
         <LineChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
           <CartesianGrid stroke={tokens.grid} strokeDasharray="3 3" />
@@ -109,11 +113,13 @@ export function MultiSeriesChart({ selectedKeys }: Props) {
             labelFormatter={(v) => new Date((v as number) * 1000).toLocaleTimeString()}
             isAnimationActive={false}
           />
+          <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }} />
           {series.map((s) => (
             <Line
               key={s.key}
               type="monotone"
               dataKey={s.key}
+              name={s.label}
               stroke={s.color}
               dot={false}
               isAnimationActive={false}
