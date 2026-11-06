@@ -252,19 +252,15 @@ class EboxDecoder(PacketDecoder):
                 log.exception("calc failed for %s.%s", spec["card"], name)
                 computed = None
 
-            out[name] = {
-                "value": round(computed, 4) if isinstance(computed, float) and math.isfinite(computed) else computed,
-                "unit": f.get("unit", ""),
-                "limits": [f.get("ltl"), f.get("htl")],
-                "status": EboxDecoder._status(computed if computed is not None else 0, f),
-                "enum": None,
-            }
+            # Guard NaN / inf so JSON and React don't choke
+            if isinstance(computed, float) and not math.isfinite(computed):
+                computed = None
 
             out[name] = {
                 "value": round(computed, 4) if isinstance(computed, float) else computed,
                 "unit": f.get("unit", ""),
                 "limits": [f.get("ltl"), f.get("htl")],
-                "status": EboxDecoder._status(computed, f),
+                "status": EboxDecoder._status(computed if computed is not None else 0, f),
                 "enum": None,
             }
 

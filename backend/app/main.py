@@ -1,30 +1,12 @@
-"""
-WFI-AI-CFI TM Viewer — FastAPI application entrypoint.
-
-Startup sequence (in lifespan):
-  1. Create database tables
-  2. Connect to Redis
-  3. Create StorageWriter + Decoder
-  4. Create IngestionManager with an on_packet handler
-  5. Start TCP source (port 9100)
-  6. Start UDP source (port 9200)
-  7. Spawn simulator (dev only)
-
-Shutdown sequence (after yield):
-  1. Stop all ingestion sources
-"""
-
 from __future__ import annotations
 
 import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-# ─── 1. Logging setup MUST happen before any other module uses logging ───
 from .logging_config import setup_logging
 setup_logging()
 
-# ─── 2. Rest of the imports ─────────────────────────────────────────────
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -33,7 +15,6 @@ from .db.postgres import SessionLocal, init_db
 from .db.redis_client import get_redis
 from .schemas.packet import DecodedPacket
 from .tm_service.ingestion.manager import IngestionManager
-from .tm_service.ingestion.serial_config import get_serial_config
 from .tm_service.inspector.factory import get_decoder
 from .tm_service.storage.writer import StorageWriter
 
@@ -58,7 +39,7 @@ decoder = None
 # Packet handler — decode → store → fan-out
 # ---------------------------------------------------------------------- #
 async def on_packet(raw: bytes, ts: float) -> None:
-    log.info("on_packet: got %d bytes", len(raw)) 
+    log.info("on_packet: got %d bytes", len(raw))
     global decoder
     if decoder is None:
         log.error("Decoder not initialized; dropping packet")
@@ -92,7 +73,7 @@ async def on_packet(raw: bytes, ts: float) -> None:
 
 
 # ---------------------------------------------------------------------- #
-# Lifespan
+# Lifespan — .env is the source of truth for transport
 # ---------------------------------------------------------------------- #
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -100,22 +81,20 @@ async def lifespan(app: FastAPI):
 
     log.info("==> Starting TM Viewer backend")
 
+    # ─── [1/6] DB ───────────────────────────────────────────────────
     log.info("[1/6] Initializing database …")
     await init_db()
 
+    # ─── [2/6] Redis ────────────────────────────────────────────────
     log.info("[2/6] Connecting to Redis …")
     redis = await get_redis()
 
+    # ─── [3/6] StorageWriter + Decoder ──────────────────────────────
     log.info("[3/6] Creating StorageWriter + Decoder (mode=%s) …",
              settings.tm_decoder)
     writer = StorageWriter(redis)
-    decoder = get_decoder(settings.tm_decoder)      # ⭐ init the decoder
-
-    log.info("[3/6] Creating StorageWriter + Decoder (mode=%s) …", settings.tm_decoder)
-    writer = StorageWriter(redis)
     decoder = get_decoder(settings.tm_decoder)
 
-    # ⭐ Preload EBOX registry if using EBOX decoder
     if settings.tm_decoder.lower() == "ebox":
         from .tm_service.registry_ebox import get_ebox_registry
         log.info("     Preloading EBOX registry (YAML validation) …")
@@ -125,23 +104,53 @@ async def lifespan(app: FastAPI):
             len(reg.cards), len(reg.quad_map),
         )
 
+    # ─── [4/6] IngestionManager ─────────────────────────────────────
     log.info("[4/6] Creating IngestionManager …")
     manager = IngestionManager(on_packet)
     manager.writer = writer
 
-    log.info("[5/6] Starting ingestion sources …")
-    from .tm_service.ingestion.serial_config import get_serial_config
-    cfg = get_serial_config()
-    if cfg.transport == "serial":
-        log.info("[5/6] Starting SERIAL source (RS-422)")
-        await manager.start_serial()
-    else:
-        log.info("[5/6] Starting ETHERNET sources (TCP + UDP)")
-        await manager.start_ethernet(
-            settings.tm_listen_host, settings.tm_listen_port, 9200,
+    # ─── [5/6] Ingestion sources — driven entirely by .env ──────────
+    log.info("[5/6] Starting ingestion sources (per .env) …")
+
+    started: list[str] = []
+
+    if settings.serial_enabled:
+        # Serial-only mode. If you need serial+ethernet simultaneously,
+        # remove the `else` below and keep both blocks.
+        log.info("[5/6] SERIAL_ENABLED=true → starting SERIAL source")
+        log.info("       port=%s baud=%d",
+                 settings.serial_port, settings.serial_baud)
+
+        # The serial source must be told which port/baud to open.
+        # Adjust the kwargs to whatever IngestionManager.start_serial expects;
+        # the important thing is that they come from `settings`, not from a
+        # separate JSON config file.
+        await manager.start_serial(
+            port=settings.serial_port,
+            baudrate=settings.serial_baud,
         )
+        started.append(f"SERIAL {settings.serial_port}@{settings.serial_baud}")
+
+    else:
+        # Ethernet mode — start TCP and UDP, each on its own port.
+        log.info("[5/6] SERIAL_ENABLED=false → starting ETHERNET sources")
+        log.info("       TCP %s:%d",
+                 settings.tm_listen_host, settings.tm_listen_port)
+        log.info("       UDP %s:%d",
+                 settings.tm_listen_host, settings.tm_udp_port)
+
+        await manager.start_ethernet(
+            host=settings.tm_listen_host,
+            tcp_port=settings.tm_listen_port,
+            udp_port=settings.tm_udp_port,
+        )
+        started.append(f"TCP {settings.tm_listen_host}:{settings.tm_listen_port}")
+        started.append(f"UDP {settings.tm_listen_host}:{settings.tm_udp_port}")
+
     await asyncio.sleep(0.5)
 
+    # ─── [6/6] Simulator ────────────────────────────────────────────
+    sim_task = None
     if settings.enable_sim:
         log.info("[6/6] Starting simulator at %.1f Hz …", settings.sim_rate_hz)
         from .sim.tcp_emitter import start_simulator
@@ -165,24 +174,24 @@ async def lifespan(app: FastAPI):
     else:
         log.info("[6/6] Simulator disabled (ENABLE_SIM=false)")
 
-    if cfg.transport == "serial":
-        log.info("Serial config: port=%s, baud=%d, flow=%s",
-                 cfg.port, cfg.baudrate, cfg.flow_control)
-    else:
-        log.info("==> Startup complete. Sources: TCP:%d, UDP:9200, decoder=%s",
-             settings.tm_listen_port, settings.tm_decoder)
+    log.info("==> Startup complete. Sources: %s, decoder=%s",
+             ", ".join(started) or "<none>", settings.tm_decoder)
 
-    yield
+    try:
+        yield
+    finally:
+        log.info("==> Shutting down …")
+        if sim_task is not None and not sim_task.done():
+            sim_task.cancel()
+            try:
+                await sim_task
+            except asyncio.CancelledError:
+                pass
+        if manager is not None:
+            await manager.stop()
+        log.info("==> Shutdown complete")
 
-    log.info("==> Shutting down …")
-    if manager is not None:
-        await manager.stop()
-    log.info("==> Shutdown complete")
 
-
-# ---------------------------------------------------------------------- #
-# App
-# ---------------------------------------------------------------------- #
 app = FastAPI(
     title="WFI-AI-CFI TM Viewer API",
     version="0.1.0",
@@ -207,4 +216,3 @@ app.include_router(ws_router)
 app.include_router(ws_logs_router)
 app.include_router(logs_router)
 app.include_router(settings_router)
-

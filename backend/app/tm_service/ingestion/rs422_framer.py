@@ -35,7 +35,7 @@ OUTER_HEADER = bytes([0x23, 0x23, 0x2A, 0x2A])
 OUTER_TRAILER = bytes([0x2A, 0x2A, 0x23, 0x23])
 
 # ─── Size limits from ICD section 4.1 ───────────────────────────────────
-MAX_INNER_PACKET_LEN = 249       # CCSDS-style packet, main header to checksum
+MAX_INNER_PACKET_LEN = 250       # CCSDS-style packet, main header to checksum, no trailer, header len counted in this size
 MIN_INNER_PACKET_LEN = 6 + 1 + 1 # 6-byte hdr + 1-byte sub-hdr + 1-byte checksum
 
 # ─── Buffer safety ──────────────────────────────────────────────────────

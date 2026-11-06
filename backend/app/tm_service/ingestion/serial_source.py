@@ -1,18 +1,12 @@
 """
 RS-422 Serial Ingestion Source
 
-Wraps a serial port (physical RS-422 USB adapter, or a socat PTY pair during
-development) and feeds raw bytes to the ingestion manager, which runs them
-through the same depacketizer pipeline as Ethernet.
+Reads raw bytes from a serial port (physical RS-422 adapter, or a socat PTY
+pair during development) and feeds framed packets to the ingestion manager.
 
-Physical wiring (production):
-    /dev/ttyUSB0  →  RS-422 transceiver  →  CTPU
-
-Development (socat loopback):
-    socat -d -d pty,raw,echo=0,link=/tmp/ttyV0 \
-               pty,raw,echo=0,link=/tmp/ttyV1
-    source: /tmp/ttyV1
-    sink:   /tmp/ttyV0  (fed by send_ebox_tm.sh)
+Connection parameters (port, baudrate, etc.) are supplied at construction
+time — they come from `.env` via app.config.Settings, NOT from
+serial_config.py.
 """
 
 from __future__ import annotations
@@ -25,66 +19,92 @@ from .base import AbstractTmSource, PacketSink
 from .format_map import header_len_for
 from .depacketizer import StreamDepacketizer
 from .rs422_framer import Rs422Framer
-from .serial_config import get_serial_config
+from .serial_config import get_serial_status
 from ...config import settings
 
 log = logging.getLogger(__name__)
 
 
 class SerialSource(AbstractTmSource):
-    def __init__(self, sink: PacketSink):
+    def __init__(
+        self,
+        sink: PacketSink,
+        port: str,
+        baudrate: int,
+        bytesize: int = 8,
+        parity: str = "N",
+        stopbits: float = 1.0,
+        flow_control: str = "none",
+        timeout_s: float = 0.1,
+        read_chunk: int = 4096,
+    ):
         super().__init__(sink)
+        self._port = port
+        self._baudrate = baudrate
+        self._bytesize = bytesize
+        self._parity = parity
+        self._stopbits = stopbits
+        self._flow_control = flow_control
+        self._timeout_s = timeout_s
+        self._read_chunk = read_chunk
+
         self._reader = None
         self._transport = None
         self._task: asyncio.Task | None = None
 
-        # Same framer selection logic as TCP/UDP
         self._is_ebox = settings.tm_decoder.lower() == "ebox"
         self._header_len = header_len_for(settings.tm_decoder)
 
     async def start(self) -> None:
         self._running = True
-        cfg = get_serial_config()
+        status = get_serial_status()
 
         try:
             import serial_asyncio
         except ImportError as e:
             log.error("pyserial-asyncio not installed: %s", e)
+            status.status = "error"
+            status.last_error = f"pyserial-asyncio not installed: {e}"
+            status.last_error_at = time.time()
+            status.save()
             return
 
-        flow = cfg.flow_control
         try:
             self._reader, self._transport = await serial_asyncio.open_serial_connection(
-                url=cfg.port,
-                baudrate=cfg.baudrate,
-                bytesize=cfg.bytesize,
-                parity=cfg.parity,
-                stopbits=cfg.stopbits,
-                rtscts=(flow == "rtscts"),
-                xonxoff=(flow == "xonxoff"),
-                dsrdtr=(flow == "dsrdtr"),
-                timeout=cfg.timeout_s,
+                url=self._port,
+                baudrate=self._baudrate,
+                bytesize=self._bytesize,
+                parity=self._parity,
+                stopbits=self._stopbits,
+                rtscts=(self._flow_control == "rtscts"),
+                xonxoff=(self._flow_control == "xonxoff"),
+                dsrdtr=(self._flow_control == "dsrdtr"),
+                timeout=self._timeout_s,
             )
-            cfg.status = "open"
-            cfg.last_error = None
-            cfg.last_error_at = None
-            cfg.save()
-            log.info("Serial source listening on %s (%d %d%s%s)",
-                     cfg.port, cfg.baudrate, cfg.bytesize, cfg.parity, cfg.stopbits)
+            status.status = "open"
+            status.last_error = None
+            status.last_error_at = None
+            status.port = self._port
+            status.baudrate = self._baudrate
+            status.save()
+            log.info(
+                "Serial source listening on %s (%d %d%s%s)",
+                self._port, self._baudrate,
+                self._bytesize, self._parity, self._stopbits,
+            )
         except Exception as e:
-            cfg.status = "error"
-            cfg.last_error = str(e)
-            cfg.last_error_at = time.time()
-            cfg.save()
-            log.error("Failed to open serial port %s: %s", cfg.port, e)
+            status.status = "error"
+            status.last_error = str(e)
+            status.last_error_at = time.time()
+            status.port = self._port
+            status.baudrate = self._baudrate
+            status.save()
+            log.error("Failed to open serial port %s: %s", self._port, e)
             return
 
         self._task = asyncio.create_task(self._read_loop())
 
     async def _read_loop(self) -> None:
-        cfg = get_serial_config()
-
-        # ⭐ Set up the correct framer/depacketizer for the current mode
         if self._is_ebox:
             framer = Rs422Framer()
             depkt = None
@@ -95,26 +115,22 @@ class SerialSource(AbstractTmSource):
         assert self._reader is not None
         while self._running:
             try:
-                chunk = await self._reader.read(cfg.read_chunk)
+                chunk = await self._reader.read(self._read_chunk)
                 if not chunk:
                     await asyncio.sleep(0.05)
                     continue
 
-                # ⭐ Feed through the framer — do NOT emit raw chunks
-                if self._is_ebox:
-                    packets = framer.feed(bytes(chunk))
-                else:
-                    packets = depkt.feed(bytes(chunk))
+                packets = (
+                    framer.feed(bytes(chunk))
+                    if self._is_ebox
+                    else depkt.feed(bytes(chunk))
+                )
 
                 for pkt in packets:
                     try:
                         await self._emit(pkt, time.time())
                     except Exception:
                         log.exception("Sink failed for serial frame")
-
-                for pkt in packets:
-                    log.debug("Serial frame: %d bytes (hex: %s)", len(pkt), pkt.hex())
-                    await self._emit(pkt, time.time())
 
             except asyncio.CancelledError:
                 raise
@@ -137,4 +153,8 @@ class SerialSource(AbstractTmSource):
             except Exception:
                 pass
             self._transport = None
+
+        status = get_serial_status()
+        status.status = "idle"
+        status.save()
         log.info("Serial source stopped")

@@ -26,7 +26,9 @@ export function useTelemetryStream(url: string = WS_URL): void {
       const store = useTelemetry.getState();
       store.setLink("connecting");
 
-      const ws = new WebSocket(url);
+      // const ws = new WebSocket(url);
+      const proto = window.location.protocol === "https:" ? "wss" : "ws";
+      const ws = new WebSocket(`${proto}://${window.location.host}/ws/telemetry`);
       wsRef.current = ws;
 
       ws.onopen = () => {

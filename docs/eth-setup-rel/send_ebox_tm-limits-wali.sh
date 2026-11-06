@@ -760,7 +760,7 @@ send_packet() {
 
   # ── Send via /dev/udp ───────────────────────────────────────────────
   # dd with iflag=fullblock guarantees a single write() → one datagram.
-  printf "$(sed 's/../\\x&/g' <<<"$frame")" \
+  echo -n "$frame" | xxd -r -p \
     | dd bs=$(( ${#frame} / 2 )) count=1 iflag=fullblock status=none \
     > "/dev/udp/${HOST}/${PORT}"
 

@@ -5,7 +5,7 @@ from typing import Any, Awaitable, Callable
 from .tcp_source import TcpSource
 from .udp_source import UdpSource
 from .serial_source import SerialSource
-from .serial_config import get_serial_config
+from .serial_config import get_serial_status   # was: get_serial_config
 from ...config import settings
 
 log = logging.getLogger(__name__)
@@ -51,13 +51,19 @@ class IngestionManager:
             self._udp = None
         self.sources = [s for s in self.sources if s not in (self._tcp, self._udp)]
 
-    async def start_serial(self) -> None:
+    async def start_serial(self, port: str, baudrate: int, **serial_kwargs) -> None:
+        """Start the serial source. Connection params come from Settings."""
         if self._serial is not None:
             log.info("Serial source already active; ignoring start_serial")
             return
-        self._serial = SerialSource(self.on_packet)
+        self._serial = SerialSource(
+            self.on_packet,
+            port=port,
+            baudrate=baudrate,
+            **serial_kwargs,
+        )
         self.sources.append(self._serial)
-        asyncio.create_task(self._run(self._serial, "Serial (RS-422)"))
+        asyncio.create_task(self._run(self._serial, f"Serial {port}@{baudrate}"))
 
     async def stop_serial(self) -> None:
         if self._serial is not None:
@@ -72,19 +78,23 @@ class IngestionManager:
     async def apply_transport(self, transport: str) -> None:
         if transport == "serial":
             await self.stop_ethernet()
-            await self.start_serial()
-            # If serial didn't come up, fall back to ethernet immediately
-            from .serial_config import get_serial_config
-            if get_serial_config().status == "error":
+            await self.start_serial(
+                port=settings.serial_port,
+                baudrate=settings.serial_baud,
+            )
+            if get_serial_status().status == "error":
                 log.warning("Serial failed; falling back to ethernet")
                 await self.start_ethernet(
-                    settings.tm_listen_host, settings.tm_listen_port, 9200,
+                    settings.tm_listen_host,
+                    settings.tm_listen_port,
+                    settings.tm_udp_port,
                 )
-                # Do not overwrite the user's requested transport — let them see the error
         elif transport == "ethernet":
             await self.stop_serial()
             await self.start_ethernet(
-                settings.tm_listen_host, settings.tm_listen_port, 9200,
+                settings.tm_listen_host,
+                settings.tm_listen_port,
+                settings.tm_udp_port,
             )
         else:
             log.warning("Unknown transport %r", transport)

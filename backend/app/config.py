@@ -1,31 +1,34 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from pydantic import Field
+from typing import List
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
-
-    # Ingestion
+    # ─── Ingestion: Ethernet ─────────────────────────────────────────
     tm_listen_host: str = "0.0.0.0"
-    tm_listen_port: int = 9100
-    udp_listen_port: int = 9200
-    enable_sim: bool = True
+    tm_listen_port: int = 9100          # TCP
+    tm_udp_port: int = 9200             # UDP
+
+    # ─── Ingestion: Serial (RS-422) ──────────────────────────────────
+    serial_enabled: bool = False
+    serial_port: str = "/tmp/ttyV1"
+    serial_baud: int = 115200
+
+    # ─── Simulator ───────────────────────────────────────────────────
+    enable_sim: bool = False
     sim_rate_hz: float = 10.0
 
-    # ⭐ Decoder selection
-    tm_decoder: str = "pus"     # "custom" | "pus" | "ebox" | "oem" (future)
-
-    # Storage
-    redis_url: str = "redis://localhost:6379/0"
-    redis_live_stream: str = "tm.live"
-    redis_live_maxlen: int = 100_000
-    postgres_url: str = "postgresql+asyncpg://tm:tm@localhost:5432/tmdb"
-
-    # API
-    cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
-    api_host: str = "0.0.0.0"
+    # ─── Storage / API / decoder (likely already present) ────────────
+    redis_url: str
+    postgres_url: str
+    cors_origins: List[str]
     api_port: int = 8000
+    reload: bool = False
+    debug_packet_build: bool = False
+    tm_decoder: str = "ebox"
 
-    tm_pus_timestamp_len: int = 7    # bytes; 7 for CUC short, 4 for CDS, 0 for none
-
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
 
 settings = Settings()

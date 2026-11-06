@@ -46,6 +46,34 @@ SENDER_TRANSPORT=none ./start-tm-viewer.sh    # backend-only, no fake traffic
 cd frontend
 npx tsc --noEmit
 
+docker compose up -d postgres redis grafana
+
+(correct one)
+main hdr     6
++ sub hdr    1
++ eff hdr    4
++ payload  238   (when you uncomment the last 6 fields)
++ checksum   1
+─────────────
+         250
+
+(current one with six ebox yaml file entries commented out)
+payload           = 237 B
+sub-header        =   1 B   (byte 0x01)
+effective header  =   4 B   (0x1A, 0x10, 0x68, 0x01)
+─────────────────────────
+body              = 242 B
++ main header     =   6 B   (word0, word1, word2)
+─────────────────────────
+inner CCSDS packet = 248 B   (main hdr + sub-hdr + eff hdr + payload)
++ checksum        =   1 B
+─────────────────────────
+inner w/ checksum = 249 B
++ outer header    =   4 B
++ outer trailer   =   4 B
+─────────────────────────
+total wire frame  = 257 B
+
 
 sudo tee /etc/systemd/system/ebox-pty.service <<'EOF'
 [Unit]
