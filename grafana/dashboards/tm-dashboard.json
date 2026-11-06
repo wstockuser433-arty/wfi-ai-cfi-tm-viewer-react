@@ -1,0 +1,281 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "postgres", "uid": "${DS_TM_POSTGRES}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": null}] },
+          "unit": "amp"
+        }
+      },
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "${DS_TM_POSTGRES}" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT p.value_num AS \"value\" FROM parameters p JOIN packets pk ON p.packet_id = pk.id WHERE pk.ts >= $__timeFrom()::timestamptz AND pk.ts <= $__timeTo()::timestamptz AND p.name = 'mcu_primary_current_a' ORDER BY pk.ts DESC LIMIT 1;",
+          "refId": "A"
+        }
+      ],
+      "title": "Latest Primary Current",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "${DS_TM_POSTGRES}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 26},
+              {"color": "green", "value": 28}
+            ]
+          },
+          "unit": "volt"
+        }
+      },
+      "gridPos": { "h": 5, "w": 8, "x": 8, "y": 0 },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "${DS_TM_POSTGRES}" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT p.value_num AS \"value\" FROM parameters p JOIN packets pk ON p.packet_id = pk.id WHERE pk.ts >= $__timeFrom()::timestamptz AND pk.ts <= $__timeTo()::timestamptz AND p.name = 'mcu_primary_volt_v' ORDER BY pk.ts DESC LIMIT 1;",
+          "refId": "A"
+        }
+      ],
+      "title": "Latest Primary Voltage",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "${DS_TM_POSTGRES}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": null}] },
+          "unit": "celsius"
+        }
+      },
+      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 0 },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "${DS_TM_POSTGRES}" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT p.value_num AS \"value\" FROM parameters p JOIN packets pk ON p.packet_id = pk.id WHERE pk.ts >= $__timeFrom()::timestamptz AND pk.ts <= $__timeTo()::timestamptz AND p.name = 'power_conv_chip_temp_c' ORDER BY pk.ts DESC LIMIT 1;",
+          "refId": "A"
+        }
+      ],
+      "title": "Latest Power Conv Temp",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "${DS_TM_POSTGRES}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "never"
+          },
+          "unit": "celsius"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+      "id": 4,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "${DS_TM_POSTGRES}" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT pk.ts AS \"time\", p.name AS \"metric\", p.value_num AS \"value\" FROM parameters p JOIN packets pk ON p.packet_id = pk.id WHERE pk.ts >= $__timeFrom()::timestamptz AND pk.ts <= $__timeTo()::timestamptz AND p.name IN ('power_conv_chip_temp_c', 'ltm8051_temp_c', 'ddr_memory_temp_c', 'm2s090_temp_c', 'img_mod1_fpga_temp_c') ORDER BY pk.ts ASC;",
+          "refId": "A"
+        }
+      ],
+      "title": "System Temperatures",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "${DS_TM_POSTGRES}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "never"
+          },
+          "unit": "celsius"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
+      "id": 5,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "${DS_TM_POSTGRES}" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT pk.ts AS \"time\", p.name AS \"metric\", p.value_num AS \"value\" FROM parameters p JOIN packets pk ON p.packet_id = pk.id WHERE pk.ts >= $__timeFrom()::timestamptz AND pk.ts <= $__timeTo()::timestamptz AND p.name IN ('ntc_primary_ch1_c', 'ntc_primary_ch2_c', 'ntc_primary_ch3_c', 'ntc_primary_ch4_c', 'ntc_primary_ch5_c', 'ntc_primary_ch6_c', 'ntc_primary_ch7_c') ORDER BY pk.ts ASC;",
+          "refId": "A"
+        }
+      ],
+      "title": "7-Channel Thermal Matrix",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "${DS_TM_POSTGRES}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 1,
+            "showPoints": "never"
+          },
+          "unit": "none"
+        }
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 13 },
+      "id": 6,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "${DS_TM_POSTGRES}" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT pk.ts AS \"time\", p.name AS \"metric\", p.value_num AS \"value\" FROM parameters p JOIN packets pk ON p.packet_id = pk.id WHERE pk.ts >= $__timeFrom()::timestamptz AND pk.ts <= $__timeTo()::timestamptz AND p.name IN ('cmd_rx_count', 'img_mod1_cmd_rx_count') ORDER BY pk.ts ASC;",
+          "refId": "A"
+        }
+      ],
+      "title": "Command Throughput",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "${DS_TM_POSTGRES}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": {
+            "fillOpacity": 70,
+            "lineWidth": 0,
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "blue", "value": null},
+              {"color": "orange", "value": 1},
+              {"color": "red", "value": 50}
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 13 },
+      "id": 7,
+      "options": {
+        "colWidth": 0.9,
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "rowHeight": 0.9,
+        "showValue": "auto",
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+    "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "${DS_TM_POSTGRES}" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "WITH heater_data AS (SELECT pk.ts AS \"time\", p.name AS \"metric\", p.value_num AS \"value\", LAG(p.value_num) OVER (PARTITION BY p.name ORDER BY pk.ts) as prev_val FROM parameters p JOIN packets pk ON p.packet_id = pk.id WHERE pk.ts >= $__timeFrom()::timestamptz AND pk.ts <= $__timeTo()::timestamptz AND p.name IN ('prim_heater_ch1_status.pwm', 'prim_heater_ch2_status.pwm') ) SELECT \"time\", \"metric\", \"value\" FROM heater_data WHERE prev_val IS NULL OR \"value\" != prev_val ORDER BY \"time\" ASC;",
+          "refId": "A"
+        }
+      ],
+      "title": "Heater PWM Status",
+      "type": "status-history"
+    }
+  ],
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["telemetry", "ebox"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "TM Postgres", "value": "TM Postgres" },
+        "hide": 2,
+        "includeAll": false,
+        "label": "Datasource",
+        "multi": false,
+        "name": "DS_TM_POSTGRES",
+        "options": [],
+        "query": "postgres",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "TM Viewer Overview",
+  "uid": "tm-viewer-overview",
+  "version": 2,
+  "weekStart": ""
+}

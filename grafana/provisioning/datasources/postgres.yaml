@@ -1,0 +1,18 @@
+apiVersion: 1
+
+datasources:
+  - name: TM Postgres
+    type: postgres
+    access: proxy
+    url: postgres:5432
+    user: tm
+    database: tmdb
+    jsonData:
+      database: tmdb
+      sslmode: 'disable'
+      postgresVersion: 1600
+      timescaledb: false
+    secureJsonData:
+      password: tm
+    isDefault: true
+    editable: true
