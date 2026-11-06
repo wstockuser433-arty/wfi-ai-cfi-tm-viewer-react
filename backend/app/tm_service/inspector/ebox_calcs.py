@@ -10,84 +10,102 @@ Every formula here is transcribed verbatim from ICD v1.2 Table 49.
 """
 
 from __future__ import annotations
-
 import math
 
 
-# ─── Linear-scaled voltages / currents ─────────────────────────────────
+# ─── 16-bit Signed Helper ─────────────────────────────────────────────
+def SIGNED_16(D: int) -> int:
+    """Reinterprets a raw u16 integer as signed i16 (two's complement)."""
+    return D - 65536 if D >= 32768 else D
+
+
+# ─── Linear Voltages & Currents ─────────────────────────────────────────
 def V_5V_SCALE(D: int) -> float:
-    """Voltage = D/4095 * 5 (ICD §Table 49, W103–W120)"""
-    return D / 4095.0 * 5.0
+    """
+    Voltage parsing (ICD W103–W120).
+    Formula: Voltage = D / 4095 * 5
+    """
+    return (D / 4095.0) * 5.0
 
 
 def CURRENT_2V5_SCALE(D: int) -> float:
-    """Current = 2.5 * (D/4095*5 - 2.445) (ICD W14–W21)"""
-    return 2.5 * ((D / 4095.0 * 5.0) - 2.445)
+    """
+    Current parsing (ICD W14–W21).
+    Formula: Let V = (D / 4095) * 5, then Current = 2.5 * (V - 2.445)
+    """
+    v_sense = (D / 4095.0) * 5.0
+    return 2.5 * (v_sense - 2.445)
 
 
+# ─── Temperature Functions ─────────────────────────────────────────────
 def TEMP_CHIP(D: int) -> float:
-    """Power conversion chip temp = 326.85 - D/4095 * 2500 (ICD W12–W13)"""
+    """
+    Power conversion chip temperature (ICD W12–W13).
+    Formula: T = 326.85 - (D / 4095) * 2500
+    """
     return 326.85 - (D / 4095.0) * 2500.0
 
 
-# ─── LTM8051 (sign-magnitude) ──────────────────────────────────────────
-def TEMP_LTM8051(D: int) -> float:
+def parse_temp_12bit(D: int) -> float:
     """
-    ICD W22–W23:
-      if D & 0x800 == 0:    T = D * 0.0625
-      else:                 T = -(0x1000 - D) * 0.0625
+    Generic 12-bit signed temperature parser with bit-11 sign flag (0.0625 °C/LSB).
+    Used for LTM8051 (W22–W23), DDR (W24–W25), and M2S090 (W26–W27).
     """
     if D & 0x800:
         return -(0x1000 - D) * 0.0625
     return D * 0.0625
 
 
-# ─── DDR / M2S090 (u16 * 0.0625) ───────────────────────────────────────
+def TEMP_LTM8051(D: int) -> float:
+    """LTM8051 temperature (ICD W22–W23)."""
+    return parse_temp_12bit(D)
+
+
 def TEMP_DDR(D: int) -> float:
-    return D * 0.0625
+    """DDR memory temperature (ICD W24–W25)."""
+    return parse_temp_12bit(D)
 
 
 def TEMP_M2S090(D: int) -> float:
-    return D * 0.0625
+    """M2S090 temperature (ICD W26–W27)."""
+    return parse_temp_12bit(D)
 
 
-# ─── NTC thermistor (log formula from ICD W28–W55) ────────────────────
-def TEMP_NTC(D: int) -> float | None:
+def TEMP_NTC(D: int) -> float:
     """
-    NTC thermistor temperature from raw ADC reading.
-
-    Returns None (instead of NaN) for out-of-range inputs, which
-    serializes to JSON null cleanly.
+    Primary & backup thermistor channels (ICD W28–W55).
+    Formula:
+      R = 10 * D / (4095 - D)
+      T (°C) = 1 / ((1 / 298.15) + (ln(R) / 4100)) - 273.15
     """
-    if D <= 0 or D >= 4095:
-        return None       # ← was float("nan")
-    R = 10.0 * D / (4095.0 - D)
-    try:
-        return 1.0 / ((1.0 / 298.15) + math.log(R / 10.0) / 4100.0) - 273.15
-    except (ValueError, ZeroDivisionError):
-        return None
-
-
-# ─── Signed 16-bit (two's complement) ─────────────────────────────────
-def SIGNED_16(D: int) -> int:
-    """Reinterpret u16 as i16."""
-    return D - 65536 if D >= 32768 else D
+    if D >= 4095:
+        return float("nan")  # Protect against divide-by-zero
+    
+    r_val = (10.0 * D) / (4095.0 - D)
+    if r_val <= 0:
+        return float("nan")  # Protect against log of non-positive numbers
+        
+    t_kelvin = 1.0 / ((1.0 / 298.15) + (math.log(r_val) / 4100.0))
+    return t_kelvin - 273.15
 
 
 def TEMP_CHANNEL_1(D: int) -> float:
-    """Imaging module channel temp = SIGNED_16(D) / 128.0"""
+    """
+    Imaging module channel temperature (ICD W73–W74, W88–W89).
+    Formula: T = SIGNED_16(D) / 128.0
+    """
     return SIGNED_16(D) / 128.0
 
 
 def TEMP_FPGA_MODULE(D: int) -> float:
-    """FPGA temp = (D/16 * 503.975/4096) - 273.15"""
-    return (D / 16.0) * (503.975 / 4096.0) - 273.15
+    """
+    FPGA module temperature (ICD W75–W76, W90–W91).
+    Formula: T = ((D / 16) * 503.975 / 4096) - 273.15
+    """
+    return ((D / 16.0) * 503.975 / 4096.0) - 273.15
 
-def TEMP_CHANNEL_1(D: int) -> float:
-    return SIGNED_16(D) / 128.0
 
-# ─── Named calculator dispatch table ──────────────────────────────────
-# Each entry: name in YAML `calc:` → callable(D) → float/int
+# ─── Calculator Dispatch Table ────────────────────────────────────────
 CALC_FUNCS: dict[str, callable] = {
     "V_5V_SCALE":           V_5V_SCALE,
     "CURRENT_2V5_SCALE":    CURRENT_2V5_SCALE,
@@ -103,7 +121,7 @@ CALC_FUNCS: dict[str, callable] = {
 
 
 def apply_calc(expr: str, D: int) -> float | int:
-    """Look up a whitelisted function by name and apply it to D."""
+    """Look up a whitelisted function by name and apply it to raw value D."""
     fn = CALC_FUNCS.get(expr.strip())
     if fn is None:
         raise ValueError(f"Unknown calc function: {expr!r}")

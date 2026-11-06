@@ -38,6 +38,15 @@ chmod +x send_ebox_tm.sh
   -c CAMERA_UNIT_STATUS \
   -n 5 -v
 
+SENDER_TRANSPORT=udp ./start-tm-viewer.sh
+SENDER_TRANSPORT=serial ./start-tm-viewer.sh
+SENDER_TRANSPORT=none ./start-tm-viewer.sh    # backend-only, no fake traffic
+
+# Frontend error check
+cd frontend
+npx tsc --noEmit
+
+
 sudo tee /etc/systemd/system/ebox-pty.service <<'EOF'
 [Unit]
 Description=WFI-AI-CFI EBOX virtual serial PTY pair
@@ -59,7 +68,3 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now ebox-pty.service
 sudo systemctl status ebox-pty.service
 
-
-# Frontend error check
-cd frontend
-npx tsc --noEmit

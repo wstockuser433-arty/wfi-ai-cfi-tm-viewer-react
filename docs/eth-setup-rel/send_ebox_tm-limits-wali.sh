@@ -93,17 +93,7 @@ set -euo pipefail
 
 # Format: "CARD_KEY|unit_sub_id|service|subservice|description"
 ALL_CARDS=(
-  "CAM_ELEC|16|100|1|Camera Electronics Card"
-  "CDPM_P_FPGA|32|102|1|FPGA Processing Card"
-  "CDPM_P_AI|33|102|2|AI Board"
-  "CDPM_P_THCC|34|102|3|Thermal Control Card"
-  "CDPM_R_FPGA|48|104|1|FPGA Processing Card (R)"
-  "CDPM_R_AI|49|104|2|AI Board (R)"
-  "CTPU_P_PWR|64|112|1|Power Card"
-  "CTPU_P_PPC|65|112|2|Power Processing Card"
-  "CTPU_R_PWR|80|114|1|Power Card (R)"
-  "CTPU_R_PPC|81|114|2|Power Processing Card (R)"
-  "UNIT_HK|127|127|1|Unit Housekeeping"
+  "CAMERA_UNIT_STATUS|16|104|1|Camera Unit Status Telemetry"
 )
 
 declare -A CARD_SUBID=()
@@ -129,7 +119,7 @@ EBOX_UNIT_ID=$((0x1A))
 EBOX_APID=$((0x2B))
 EBOX_VERSION=$((0x02))         # binary 010
 SEQ_FLAGS_UNSEGMENTED=$((0x03)) # binary 11
-MAX_PAYLOAD=237
+MAX_PAYLOAD=238
 
 # ══════════════════════════════════════════════════════════════════════════
 # Physical-value generator (used by -y). Python 3, standard library only.
@@ -140,23 +130,112 @@ MAX_PAYLOAD=237
 read -r -d '' PY_GEN <<'PY' || true
 import math, random, re, struct, sys, time, zlib
 
-MAX_PAYLOAD = 237
+MAX_PAYLOAD = 238
 TYPES = {
     "u8": (">B", 1), "u16": (">H", 2), "u32": (">I", 4), "u64": (">Q", 8),
+    "u24": (None, 3),
     "i8": (">b", 1), "i16": (">h", 2), "i32": (">i", 4), "i64": (">q", 8),
     "f32": (">f", 4), "f64": (">d", 8),
 }
-# Nominal state per enum field (must be a key of that field's enum in the yaml)
+
+# ─── Realistic raw-value ranges ─────────────────────────────────────
+# For fields that have a calc formula in ebox.yaml, we don't generate
+# the raw value from "in-limits" of the raw itself (which has no limits),
+# we generate it to produce a realistic physical value after calc.
+#
+# Each entry: field_name → (raw_min, raw_max)
+# The generator picks a value in this range, smoothly drifting.
+REALISTIC_RAW_VALUES = {
+    # NTC thermistors (raw ADC → NTC formula → °C)
+    # Raw ~2000-2600 → R ~10k → ~20-30 °C at room temp
+    "ntc_primary_ch1_raw": (2100, 2400),
+    "ntc_primary_ch2_raw": (2050, 2350),
+    "ntc_primary_ch3_raw": (2000, 2300),
+    "ntc_primary_ch4_raw": (1950, 2250),
+    "ntc_primary_ch5_raw": (2100, 2450),
+    "ntc_primary_ch6_raw": (1900, 2200),
+    "ntc_primary_ch7_raw": (2050, 2350),
+    "ntc_backup_ch1_raw":  (2100, 2400),
+    "ntc_backup_ch2_raw":  (2050, 2350),
+    "ntc_backup_ch3_raw":  (2000, 2300),
+    "ntc_backup_ch4_raw":  (1950, 2250),
+    "ntc_backup_ch5_raw":  (2100, 2450),
+    "ntc_backup_ch6_raw":  (1900, 2200),
+    "ntc_backup_ch7_raw":  (2050, 2350),
+
+    # Power conversion chip temperature
+    # Calc: T = 326.85 - D/4095 * 2500
+    # Want T ≈ 40-50 °C  →  D ≈ (326.85 - 45) * 4095 / 2500 ≈ 461
+    "power_conv_chip_temp_raw": (380, 520),
+
+    # MCU currents (raw ADC → 2.5*(D/4095*5 - 2.445) → A)
+    # Want ~1-3 A  →  D/4095*5 ≈ 2.9-3.65 → D ≈ 2400-3000
+    "mcu_primary_current_raw":  (2300, 2800),
+    "mcu_backup_current_raw":   (2200, 2650),
+    "imaging_module_current_raw": (2000, 2500),
+    "ai_module_current_raw":    (1800, 2300),
+
+    # LTM8051 temp (sign-magnitude, want ~25 °C → D ≈ 400)
+    "ltm8051_temp_raw": (350, 500),
+
+    # DDR / M2S090 (want ~40 °C → D ≈ 640)
+    "ddr_memory_temp_raw": (580, 700),
+    "m2s090_temp_raw":     (600, 720),
+
+    # Imaging module temperatures
+    "img_mod1_channel_temp_raw": (3200, 3700),   # /128 → 25-29 °C
+    "img_mod2_channel_temp_raw": (3200, 3700),
+    "img_mod1_fpga_temp_raw":    (4500, 5200),   # realistic FPGA die
+    "img_mod2_fpga_temp_raw":    (4500, 5200),
+
+    # Voltages (D/4095*5 → V)
+    # Want ~28 V  →  D ≈ 22932 — wait, D is u16, max 65535, ok
+    # Actually for 28 V: D = 28/5 * 4095 = 22932
+    "mcu_primary_volt_raw":     (22500, 23500),
+    "mcu_backup_volt_raw":      (22500, 23500),
+    "imaging_primary_volt_raw": (22500, 23500),
+    "imaging_backup_volt_raw":  (22500, 23500),
+    "ai_volt_raw":              (22500, 23500),
+
+    # Reference voltages (want ~2.5 V → D ≈ 2048)
+    "mcu_primary_ref_volt_raw":  (2000, 2100),
+    "mcu_backup_ref_volt_raw":   (2000, 2100),
+    "imaging_ref_volt_raw":      (2000, 2100),
+    "ai_ref_volt_raw":           (2000, 2100),
+
+    # Counters that should climb
+    "img_mod1_cmd_rx_count":  (0, 50),
+    "img_mod2_cmd_rx_count":  (0, 50),
+    "cmd_rx_count":           (0, 255),
+    "sat_time_broadcast_rx_count": (0, 255),
+    "gnc_broadcast_rx_count": (0, 255),
+    "arm_start_count":        (0, 5),
+
+    "img_mod1_gps_sec": (1700000000, 1800000000),  # Unix timestamp
+    "target_grating_scale": (75000, 85000),
+    "current_grating_scale": (75000, 85000),
+    "img_mod1_fw_version": (20240101, 20250101),
+    "img_mod2_fw_version": (20240101, 20250101),
+}
+
+# Nominal enum states (unchanged from before)
 NOMINAL_ENUM = {
     "cam_clock_locked": 1, "cam_lvds_locked": 1, "ai_health_status": 0,
     "thcc_control_loop_state": 1, "pwr_overcurrent_fault": 0, "pwr_efuse_state": 1,
     "unit_mode": 2, "unit_active_cdpm": 0, "unit_active_ctpu": 0,
 }
-# Unitless fields that have neither limits nor an enum
+
+# Fields that must stay 0 (fault flags, unused bitfields)
 NOMINAL_CONST = {
     "pwr_uv_ov_status": 0, "ppc_fault_flags": 0, "ai_model_id": 1,
     "thcc_thermistor_ok": 1, "unit_last_tc_seq": 0, "unit_obc_time_corr": 0.0,
+    "rs422_reset_count": 0, "heat_abnormal_ctr1": 0, "heat_abnormal_ctr2": 0,
+    "heat_abnormal_ctr3": 0, "heat_abnormal_ctr4": 0,
+    "img_mod1_cmd_err_count": 0, "img_mod2_cmd_err_count": 0,
+    "img_mod1_pps_miss_count": 0, "img_mod2_pps_miss_count": 0,
+    "cmd_cksum_err_count": 0, "cmd_param_err_count": 0, "cmd_illegal_err_count": 0,
 }
+
 LIMIT_KEYS = ("ltl", "lth", "htl", "hth")
 
 
@@ -173,7 +252,6 @@ def num(s):
 
 
 def scalar(s):
-    """yaml scalar: "quoted" -> str, number -> int/float, anything else -> str."""
     s = s.strip()
     if s.startswith('"'):
         return s.strip('"')
@@ -184,31 +262,53 @@ def scalar(s):
 
 
 def parse(path):
-    """Minimal reader for the flow-style card/field lines used by ebox.yaml."""
+    """Reader for the flow-style AND block-style card/field lines used by ebox.yaml."""
     card_re = re.compile(r"^  ([A-Za-z0-9_]+):\s*(#.*)?$")
-    attr_re = re.compile(r"^    (unit_sub_id|service|subservice):\s*(\S+)")
-    field_re = re.compile(r"^\s+-\s*\{(.*)\}\s*(#.*)?$")
+    attr_re = re.compile(r"^    (unit_sub_id|service|subservice|unit_id):\s*(\S+)")
+    inline_field_re = re.compile(r"^\s+-\s*\{(.*)\}\s*(#.*)?$")
+    block_field_start_re = re.compile(r"^\s+-\s+(\w+):\s*(.*?)\s*(#.*)?$")
+    block_attr_re = re.compile(r"^\s+(\w+):\s*(.*?)\s*(#.*)?$")
     cards, cur, in_cards = {}, None, False
+    current_field = None  # used when inside a block-form field
+
     try:
         lines = open(path).read().splitlines()
     except OSError as e:
         die("cannot read %s: %s" % (path, e))
+
+    def flush_block_field():
+        nonlocal current_field
+        if current_field and cur is not None:
+            for req in ("name", "offset", "type"):
+                if req not in current_field:
+                    die("field %r missing %r" % (current_field.get("name", "?"), req))
+            cur["fields"].append(current_field)
+        current_field = None
+
     for n, raw in enumerate(lines, 1):
         if raw.startswith("cards:"):
             in_cards = True
             continue
         if not in_cards or not raw.strip() or raw.lstrip().startswith("#"):
             continue
+
+        # New card?
         m = card_re.match(raw)
         if m:
+            flush_block_field()
             cur = cards[m.group(1)] = {"fields": []}
             continue
+
+        # Card attribute (unit_sub_id, service, ...)?
         m = attr_re.match(raw)
-        if m and cur is not None:
+        if m and cur is not None and not current_field:
             cur[m.group(1)] = num(m.group(2))
             continue
-        m = field_re.match(raw)
+
+        # Inline field: `- { name: ..., ... }`
+        m = inline_field_re.match(raw)
         if m and cur is not None:
+            flush_block_field()
             body, f = m.group(1), {}
             em = re.search(r"enum:\s*\{([^}]*)\}", body)
             if em:
@@ -221,13 +321,29 @@ def parse(path):
                 if req not in f:
                     die("%s line %d: field has no '%s'" % (path, n, req))
             cur["fields"].append(f)
+            continue
+
+        # Block field start: `- name: ...`
+        m = block_field_start_re.match(raw)
+        if m and cur is not None:
+            flush_block_field()
+            current_field = {m.group(1): scalar(m.group(2))}
+            continue
+
+        # Inside a block field: `  offset: 11` etc.
+        m = block_attr_re.match(raw)
+        if m and current_field is not None:
+            current_field[m.group(1)] = scalar(m.group(2))
+            continue
+
+    flush_block_field()
+
     if not cards:
         die("%s: no cards found under 'cards:'" % path)
     return cards
 
 
 def band(f):
-    """Innermost limit band (lo, hi) of a field, or None when it has no limits."""
     present = [k for k in LIMIT_KEYS if k in f]
     if not present:
         return None
@@ -242,43 +358,85 @@ def band(f):
 def value(key, f, seq, elapsed):
     kind = f["type"]
     name = f["name"]
+
+    # 1. Enum fields
     if "enum" in f:
         v = NOMINAL_ENUM.get(name, min(f["enum"]))
         if v not in f["enum"]:
             die("field %s: nominal state %r is not in its enum" % (name, v))
         return v
+
+    # 2. Realistic raw values (for fields with calc formulas)
+    if name in REALISTIC_RAW_VALUES:
+        lo, hi = REALISTIC_RAW_VALUES[name]
+        mid = (lo + hi) / 2.0
+        half = (hi - lo) / 2.0
+        # Each field gets a stable, unique period and phase
+        h = zlib.crc32(("%s:%s" % (key, name)).encode())
+        period = 60 + h % 61     # 60-120 packets per full swing
+        phase = ((h >> 8) % 360) * math.pi / 180.0
+        rng = random.Random(zlib.crc32(("%s:%s:%d" % (key, name, seq)).encode()))
+        # Smooth sinusoidal drift with a small random jitter
+        x = 0.70 * math.sin(2 * math.pi * seq / period + phase) + 0.10 * rng.uniform(-1, 1)
+        v = mid + half * x
+        # Clamp to the range
+        v = max(lo, min(hi, v))
+        return int(round(v))
+
+    # 3. In-limits fields (temp setpoints, thresholds, etc.)
     b = band(f)
     if b:
         lo, hi = b
         mid, half = (lo + hi) / 2.0, (hi - lo) / 2.0
         h = zlib.crc32(("%s:%s" % (key, name)).encode())
-        period = 40 + h % 41                       # packets per full swing
+        period = 40 + h % 41
         phase = ((h >> 8) % 360) * math.pi / 180.0
         rng = random.Random(zlib.crc32(("%s:%s:%d" % (key, name, seq)).encode()))
         x = 0.40 * math.sin(2 * math.pi * seq / period + phase) + 0.05 * rng.uniform(-1, 1)
-        v = min(hi, max(lo, mid + half * x))      # |x| <= 0.45 -> never near an edge
+        v = min(hi, max(lo, mid + half * x))
         return v if kind.startswith("f") else int(round(v))
+
+    # 4. NOMINAL_CONST overrides (always same value)
     if name in NOMINAL_CONST:
         v = NOMINAL_CONST[name]
-    elif name.endswith("uptime_s"):
-        v = elapsed
-    elif "ovf" in name or name.endswith("reset_count"):
-        v = 0
-    elif f.get("unit") == "cnt":
-        v = seq // 3 if name.endswith("detections_count") else seq
-    else:
-        v = 0
-    return float(v) if kind.startswith("f") else int(v) % (1 << (8 * TYPES[kind][1]))
+        return float(v) if kind.startswith("f") else int(v)
+
+    # 5. Uptime counters
+    if name.endswith("uptime_s"):
+        return elapsed
+
+    # 6. Overflow / reset counters stay 0
+    if "ovf" in name or name.endswith("reset_count"):
+        return 0
+
+    # 7. Generic counters climb slowly
+    if f.get("unit") == "cnt":
+        return seq % (1 << (8 * TYPES[kind][1] - 1)) if not kind.startswith("f") else float(seq)
+
+    # 8. Everything else → 0
+    return 0.0 if kind.startswith("f") else 0
 
 
 def build(key, c, seq, elapsed):
-    size = max(f["offset"] + TYPES[f["type"]][1] for f in c["fields"])
+    # Only physical fields occupy bytes; calc fields are derived
+    physical = [f for f in c["fields"]
+                if f["type"] in TYPES and "calc" not in f]
+    size = max(f["offset"] + TYPES[f["type"]][1] for f in physical)
     buf, shown, decoded = bytearray(size), [], {}
-    for f in c["fields"]:
+
+    for f in physical:
         fmt, n = TYPES[f["type"]]
-        raw = struct.pack(fmt, value(key, f, seq, elapsed))
+        val = value(key, f, seq, elapsed)
+        if f["type"] == "u24":
+            v = int(val) & 0xFFFFFF
+            raw = bytes([(v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF])
+        else:
+            raw = struct.pack(fmt, val)
         buf[f["offset"]:f["offset"] + n] = raw
-        back = struct.unpack(fmt, raw)[0]
+        if f["type"] == "u24":
+            back = (raw[0] << 16) | (raw[1] << 8) | raw[2]
+        else:
+            back = struct.unpack(fmt, raw)[0]
         decoded[f["name"]] = back
         if "enum" in f:
             txt = "%s=%s" % (f["name"], f["enum"].get(back, back))
@@ -286,14 +444,31 @@ def build(key, c, seq, elapsed):
             unit = f.get("unit", "-")
             txt = "%s=%.5g%s" % (f["name"], back, "" if unit in ("-", "") else " " + unit)
         shown.append(txt)
+
+    # Add calc fields to `shown` (they don't consume bytes but the UI
+    # may want to display their raw+decoded view)
+    for f in c["fields"]:
+        if "calc" in f and f["name"] in decoded:
+            # already added above
+            continue
+        if "calc" in f:
+            # calc field — value comes from backend, script just shows it in verbose
+            # For shown list, add a placeholder
+            shown.append(f["name"] + "=(calc)")
+
     return bytes(buf), ", ".join(shown), decoded
 
 
 def validate(cards, selected):
     for key in selected:
         c = cards[key]
+        # Only PHYSICAL fields occupy payload bytes.
+        # Fields with `calc:` are derived views — they share bytes with
+        # their `calc_from` parent, so they must NOT be counted in spans.
+        physical = [f for f in c["fields"]
+                    if f["type"] in TYPES and "calc" not in f]
         spans = sorted((f["offset"], f["offset"] + TYPES[f["type"]][1], f["name"])
-                       for f in c["fields"] if f["type"] in TYPES)
+                       for f in physical)
         for f in c["fields"]:
             if f["type"] not in TYPES:
                 die("%s.%s: unknown type '%s'" % (key, f["name"], f["type"]))
@@ -301,16 +476,15 @@ def validate(cards, selected):
         for (a0, a1, an), (b0, b1, bn) in zip(spans, spans[1:]):
             if b0 < a1:
                 die("%s: fields %s and %s overlap" % (key, an, bn))
-        if spans[-1][1] > MAX_PAYLOAD:
+        if spans and spans[-1][1] > MAX_PAYLOAD:
             die("%s: fields need %d bytes (max %d)" % (key, spans[-1][1], MAX_PAYLOAD))
-        # prove the generated values stay inside their limits
+        # Sanity check values
         for seq in range(0, 300):
             _, _, dec = build(key, c, seq, 0)
             for f in c["fields"]:
                 b = band(f)
                 if b and not (b[0] <= dec[f["name"]] <= b[1]):
                     die("%s.%s=%r left its limits %r at seq %d" % (key, f["name"], dec[f["name"]], b, seq))
-
 
 cmd, path = sys.argv[1], sys.argv[2]
 cards = parse(path)

@@ -57,7 +57,7 @@ EBOX_UNIT_ID=$((0x1A))
 EBOX_APID=$((0x2B))
 EBOX_VERSION=$((0x02))         # binary 010
 SEQ_FLAGS_UNSEGMENTED=$((0x03)) # binary 11
-MAX_PAYLOAD=237
+MAX_PAYLOAD=238
 
 # ══════════════════════════════════════════════════════════════════════════
 # Physical-value generator (used by -y). Python 3, standard library only.
@@ -68,7 +68,7 @@ MAX_PAYLOAD=237
 read -r -d '' PY_GEN <<'PY' || true
 import math, random, re, struct, sys, time, zlib
 
-MAX_PAYLOAD = 237
+MAX_PAYLOAD = 238
 TYPES = {
     "u8": (">B", 1), "u16": (">H", 2), "u32": (">I", 4), "u64": (">Q", 8),
     "u24": (None, 3),
