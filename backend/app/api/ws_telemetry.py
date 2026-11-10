@@ -91,6 +91,15 @@ async def _send_packet_chunked(ws: WebSocket, pkt, ts: float) -> None:
 @router.websocket("/ws/telemetry")
 async def ws_telemetry(ws: WebSocket):
     await ws.accept()
+
+    import sys
+    main_mod = sys.modules["app.main"]
+    await ws.send_text(json.dumps({
+        "type": "init",
+        "start_time": main_mod.START_TIME,
+        "total_packets": main_mod.total_packets,
+    }))
+    
     from ..main import manager
     if manager is None:
         await ws.close(code=1011, reason="ingestion not ready")

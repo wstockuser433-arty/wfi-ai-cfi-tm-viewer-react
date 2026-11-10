@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from contextlib import asynccontextmanager
 
 from .logging_config import setup_logging
@@ -34,13 +35,15 @@ log = logging.getLogger(__name__)
 manager: IngestionManager | None = None
 decoder = None
 
+START_TIME = time.time()
+total_packets = 0
 
 # ---------------------------------------------------------------------- #
 # Packet handler — decode → store → fan-out
 # ---------------------------------------------------------------------- #
 async def on_packet(raw: bytes, ts: float) -> None:
+    global decoder, total_packets
     log.info("on_packet: got %d bytes", len(raw))
-    global decoder
     if decoder is None:
         log.error("Decoder not initialized; dropping packet")
         return
@@ -52,6 +55,8 @@ async def on_packet(raw: bytes, ts: float) -> None:
         log.exception("Failed to decode packet (len=%d)", len(raw))
         return
 
+    total_packets += 1 
+    
     assert manager is not None
 
     try:

@@ -49,6 +49,15 @@ export function useTelemetryStream(url: string = WS_URL): void {
           return;
         }
 
+        // <--- ADD: Handle session init
+        if (msg.type === "init") {
+          useTelemetry.getState().setSessionState(
+            msg.start_time,
+            msg.total_packets,
+          );
+          return;
+        }
+
         if (msg.type === "packet_begin") {
           pendingRef.current.set(msg.packet_id, {
             meta: msg.packet ?? {},

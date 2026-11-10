@@ -27,6 +27,7 @@ interface TelemetryState {
   lastPacketAt: number;
   totalReceived: number;
   meta: MetaResponse | null;
+  sessionStart: number; 
 
   // ─── Selection & UI ─────────────────────────────────
   selectedPacketId: string | null;
@@ -39,6 +40,7 @@ interface TelemetryState {
   setLink: (s: LinkState) => void;
   setMeta: (m: MetaResponse) => void;
   clearAlarms: () => void;
+  setSessionState: (start: number, count: number) => void; 
   reset: () => void;
 
   setSelectedPacketId: (id: string | null) => void;
@@ -62,13 +64,19 @@ export const useTelemetry = create<TelemetryState>()(
       lastPacketAt: 0,
       totalReceived: 0,
       meta: null,
-
+      sessionStart: Date.now(), 
       selectedPacketId: null,
       diffBaseId: null,
       sidebarOpen: true,
       bookmarks: [],
 
       // ─── Actions ────────────────────────────────────
+      setSessionState: (start, count) =>
+        set({
+          sessionStart: start * 1000,  // backend sends seconds; store as ms
+          totalReceived: count,
+        }),
+
       setSelectedPacketId: (id) => set({ selectedPacketId: id }),
       setDiffBaseId: (id) => set({ diffBaseId: id }),
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
@@ -145,6 +153,7 @@ export const useTelemetry = create<TelemetryState>()(
           alarms: [],
           lastPacketAt: 0,
           totalReceived: 0,
+          sessionStart: Date.now(),
           selectedPacketId: null,
           diffBaseId: null,
         }),

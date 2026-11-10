@@ -7,37 +7,40 @@ import {
   Search,
   Settings,
   User,
+  ScrollText,
 } from "lucide-react";
 import { useTelemetry } from "@/store/telemetryStore";
 import { useUiStore } from "@/store/uiStore";
 import { Badge } from "../ui/badge";
 import { SettingsDrawer } from "../settings/SettingsDrawer";
-import { ScrollText } from "lucide-react";   // lucide icon
-
-const MISSION_T0 = Date.now();
 
 export function StatusBar() {
   const link = useTelemetry((s) => s.link);
   const total = useTelemetry((s) => s.totalReceived);
   const lastAt = useTelemetry((s) => s.lastPacketAt);
+  const sessionStart = useTelemetry((s) => s.sessionStart); // <--- ADD
   const setPage = useUiStore((s) => s.setPage);
+  const setLogsOpen = useUiStore((s) => s.setLogsOpen);
 
   const [missionTime, setMissionTime] = useState("T+00:00:00");
   const [stale, setStale] = useState(false);
   const [logoOk, setLogoOk] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // Mission clock
+  // Mission clock — now anchored to the backend's sessionStart
   useEffect(() => {
-    const id = window.setInterval(() => {
-      const s = Math.floor((Date.now() - MISSION_T0) / 1000);
+    const tick = () => {
+      const s = Math.floor((Date.now() - sessionStart) / 1000);
       const hh = String(Math.floor(s / 3600)).padStart(2, "0");
       const mm = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
       const ss = String(s % 60).padStart(2, "0");
       setMissionTime(`T+${hh}:${mm}:${ss}`);
-    }, 1000);
+    };
+
+    tick(); // run immediately so we don't wait 1s on first paint
+    const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [sessionStart]); // <--- DEPEND ON sessionStart
 
   // Stale watchdog
   useEffect(() => {
@@ -54,8 +57,6 @@ export function StatusBar() {
     disconnected: { Icon: WifiOff, color: "text-accent-red",   label: "OFFLINE",    variant: "crit" as const },
   }[link];
   const { Icon } = linkCfg;
-
-  const setLogsOpen = useUiStore((s) => s.setLogsOpen);
 
   return (
     <>
@@ -114,7 +115,6 @@ export function StatusBar() {
           </div>
 
           <div className="flex items-center gap-1 pl-4 border-l border-white/5">
-            {/* In the tools group: */}
             <button
               onClick={() => setLogsOpen(true)}
               className="p-1.5 hover:bg-white/5 rounded"
