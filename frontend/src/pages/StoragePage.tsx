@@ -108,7 +108,7 @@ export function StoragePage() {
               <thead>
                 <tr className="border-b border-white/5 text-[10px] text-muted uppercase tracking-wider sticky top-0 bg-space-800">
                   <th className="text-left py-2 px-2">Time</th>
-                  <th className="text-left py-2 px-2">APID</th>
+                  <th className="text-left py-2 px-2">Unit Sub ID</th>
                   <th className="text-left py-2 px-2">Subsystem</th>
                   <th className="text-left py-2 px-2">Card</th>
                   <th className="text-right py-2 px-2">CRC</th>
