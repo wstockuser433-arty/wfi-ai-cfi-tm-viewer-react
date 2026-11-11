@@ -47,6 +47,7 @@ interface TelemetryState {
   setDiffBaseId: (id: string | null) => void;
   toggleSidebar: () => void;
   toggleBookmark: (id: string) => void;
+  addPackets: (batch: DecodedPacket[]) => void;
 }
 
 const MAX_PACKETS = 2000;
@@ -139,6 +140,32 @@ export const useTelemetry = create<TelemetryState>()(
             lastPacketAt: Date.now(),
             totalReceived: isLive ? state.totalReceived + batch.length : state.totalReceived,
             selectedPacketId: nextSelected,
+          };
+        }),
+      
+      addPackets: (batch) =>
+        set((state) => {
+          if (!batch || batch.length === 0) return state;
+          
+          const latest = { ...state.latestByApid };
+          const latestParam = { ...state.latestByParam };
+
+          for (const p of batch) {
+            latest[p.apid] = p;
+            for (const [name] of Object.entries(p.fields ?? {})) {
+              latestParam[`${p.apid}:${name}`] = p;
+            }
+          }
+
+          // Merge new packets with existing, remove duplicates by ID, keep size cap
+          const existingIds = new Set(state.packets.map(packetId));
+          const newPackets = batch.filter((p) => !existingIds.has(packetId(p)));
+          const combined = [...state.packets, ...newPackets].slice(-MAX_PACKETS);
+
+          return {
+            packets: combined,
+            latestByApid: latest,
+            latestByParam: latestParam,
           };
         }),
 

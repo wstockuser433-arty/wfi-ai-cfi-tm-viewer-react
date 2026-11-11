@@ -8,6 +8,8 @@ import { useUiStore, type Page } from "@/store/uiStore";
 import { SUBSYSTEM_COLORS } from "@/lib/colors";
 import { cn } from "@/lib/utils";
 import { packetId, type DecodedPacket } from "@/types/packet";
+import { useEffect, useRef } from "react";
+import { API_BASE } from "@/lib/api";
 
 interface NavItem {
   id: Page;
@@ -23,6 +25,7 @@ export function Sidebar() {
   const toggleBookmark = useTelemetry((s) => s.toggleBookmark);
   const sidebarOpen = useTelemetry((s) => s.sidebarOpen);
   const toggleSidebar = useTelemetry((s) => s.toggleSidebar);
+  const addPackets = useTelemetry((s) => s.addPackets);
 
   const activePage = useUiStore((s) => s.activePage);
   const setPage = useUiStore((s) => s.setPage);
@@ -41,6 +44,48 @@ export function Sidebar() {
   const savedPackets = bookmarks
     .map((id) => packets.find((p) => packetId(p) === id))
     .filter((p): p is DecodedPacket => p !== undefined);
+
+  const fetchAttempted = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!bookmarks.length) return;
+
+    const existingIds = new Set(packets.map((p) => packetId(p)));
+    const missingBookmarks = bookmarks.filter(
+      (id) => !existingIds.has(id) && !fetchAttempted.current.has(id)
+    );
+
+    if (missingBookmarks.length === 0) return;
+
+    // Mark as attempted immediately so we don't fire duplicates
+    missingBookmarks.forEach((id) => fetchAttempted.current.add(id));
+
+    async function fetchMissing() {
+      const fetched: DecodedPacket[] = [];
+      
+      for (const id of missingBookmarks) {
+        const parts = id.split("-");
+        if (parts.length !== 3) continue;
+        const [ts, apid, seq] = parts;
+        try {
+          const res = await fetch(`${API_BASE}/api/packets/by-key?apid=${apid}&seq=${seq}&ts=${ts}`);
+          if (res.ok) {
+            const pkt = await res.json();
+            fetched.push(pkt);
+          }
+        } catch (e) {
+          console.error(`Failed to fetch bookmark ${id}`, e);
+        }
+      }
+
+      if (fetched.length > 0) {
+        addPackets(fetched);
+      }
+    }
+
+    fetchMissing();
+  }, [bookmarks, packets, addPackets]); 
+
 
   if (!sidebarOpen) {
     return (

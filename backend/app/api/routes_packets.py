@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from ..db.postgres import get_db
 from ..db.models.packet import PacketRow
@@ -28,6 +28,35 @@ async def list_packets(
     return {"packets": rows}
 
 
+@router.get("/packets/by-key")
+async def packet_by_key(
+    apid: int,
+    seq: int,
+    ts: str = Query(...),  # Keep as str to safely parse float
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        ts_float = float(ts)
+        t = datetime.fromtimestamp(ts_float, tz=timezone.utc)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid timestamp format")
+
+    tol = timedelta(milliseconds=1)
+    stmt = (
+        select(PacketRow)
+        .where(PacketRow.apid == apid, PacketRow.seq == seq,
+               PacketRow.ts.between(t - tol, t + tol))
+        .limit(1)
+    )
+    row = (await db.execute(stmt)).scalars().first()
+    
+    if row is None:
+        raise HTTPException(status_code=404, detail="packet not found")
+        
+    return get_decoder(settings.tm_decoder).decode(
+        bytes.fromhex(row.raw_hex), row.ts.timestamp()
+    )
+
 # ⭐ NEW: Fetch a single packet by ID and decode it
 @router.get("/packets/{packet_id}")
 async def get_packet_by_id(packet_id: int, db: AsyncSession = Depends(get_db)):
@@ -45,3 +74,32 @@ async def get_packet_by_id(packet_id: int, db: AsyncSession = Depends(get_db)):
         return pkt_dict
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Decode failed: {e}")
+
+# @router.get("/packets/by-key")
+# async def packet_by_key(
+#     apid: int,
+#     seq: int,
+#     ts: str = Query(...),  # Accept as string to avoid 422 float parsing issues
+#     db: AsyncSession = Depends(get_db),
+# ):
+#     try:
+#         ts_float = float(ts)
+#         t = datetime.fromtimestamp(ts_float, tz=timezone.utc)
+#     except ValueError:
+#         raise HTTPException(status_code=400, detail="Invalid timestamp format")
+
+#     tol = timedelta(milliseconds=1)
+#     stmt = (
+#         select(PacketRow)
+#         .where(PacketRow.apid == apid, PacketRow.seq == seq,
+#                PacketRow.ts.between(t - tol, t + tol))
+#         .limit(1)
+#     )
+#     row = (await db.execute(stmt)).scalars().first()
+    
+#     if row is None:
+#         raise HTTPException(status_code=404, detail="packet not found")
+        
+#     return get_decoder(settings.tm_decoder).decode(
+#         bytes.fromhex(row.raw_hex), row.ts.timestamp()
+#     )
