@@ -10,7 +10,6 @@ export function UploadDumpButton() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
-  // Bring in the store actions
   const ingest = useTelemetry((s) => s.ingest);
   const setSelectedPacketId = useTelemetry((s) => s.setSelectedPacketId);
 
@@ -20,16 +19,18 @@ export function UploadDumpButton() {
     try {
       const fd = new FormData();
       fd.append("file", f);
+      // The backend route will detect if it's JSON or raw binary based on filename
       const r = await fetch(`${API_BASE}/api/upload`, { method: "POST", body: fd });
       const j = await r.json();
       
-      // Assuming the backend returns { count: N, packets: DecodedPacket[] }
-      // (If it only returns count, we need to adjust the backend — see note below)
       if (j.packets && j.packets.length > 0) {
         const decoded: DecodedPacket[] = j.packets;
-        ingest(decoded);
         
-        // Auto-select the first packet so the details panel populates
+        // Because we are preserving timestamps, we need to make sure the store 
+        // doesn't sort them by current time. 
+        ingest(decoded, false);
+        
+        // Select the first packet
         setSelectedPacketId(packetId(decoded[0]));
       }
       
@@ -46,7 +47,7 @@ export function UploadDumpButton() {
       <input
         ref={input}
         type="file"
-        accept=".bin,.dump"
+        accept=".bin,.dump,.json" // ⭐ Accept JSON
         hidden
         onChange={(e) => e.target.files?.[0] && handle(e.target.files[0])}
       />
@@ -56,7 +57,7 @@ export function UploadDumpButton() {
         className="flex items-center gap-1.5"
       >
         {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-        Upload .bin/.dump
+        Upload Dump
       </Button>
       {msg && <span className="text-[11px] text-muted">{msg}</span>}
     </div>

@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { useTelemetry } from "@/store/telemetryStore";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { ChevronLeft, ChevronRight, Search, Bookmark } from "lucide-react";
+import { ChevronLeft, ChevronRight, Bookmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { packetId, type DecodedPacket } from "@/types/packet";
 
@@ -83,7 +83,6 @@ export function PacketListTable() {
 
         {/* Search bar gets flex-1 and a bigger width */}
         <div className="flex-1 min-w-[150px] relative">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted z-10" />
           <input
             type="text"
             value={search}
@@ -91,9 +90,8 @@ export function PacketListTable() {
               setSearch(e.target.value);
               setPage(0);
             }}
-            // ⭐ THE FIX: Only show placeholder when search is empty
-            placeholder={search === "" ? "Filter APID, subsystem…" : ""}
-            className="w-full bg-white/5 border border-white/10 rounded-md pl-8 pr-2 py-1 text-xs text-slate-100 placeholder:text-muted/50 focus:outline-none focus:border-accent/40"
+            placeholder={search === "" ? "Filter Sub-ID, subsystem…" : ""}
+            className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-1 text-xs text-slate-100 placeholder:text-muted/50 focus:outline-none focus:border-accent/40"
           />
         </div>
 
@@ -137,7 +135,7 @@ export function PacketListTable() {
             <tr>
               <th className="px-2 py-2 font-medium w-6"></th>
               <th className="px-3 py-2 font-medium">Time</th>
-              <th className="px-3 py-2 font-medium">APID</th>
+              <th className="px-3 py-2 font-medium whitespace-nowrap">Unit Sub ID</th>
               <th className="px-3 py-2 font-medium">Subsystem / Card</th>
               <th className="px-3 py-2 font-medium text-right">CRC</th>
             </tr>
@@ -166,13 +164,13 @@ export function PacketListTable() {
                       <Bookmark className="w-3.5 h-3.5 text-accent fill-accent" />
                     )}
                   </td>
-                  <td className="px-3 py-1.5 mono text-secondary">
+                  <td className="px-3 py-1.5 mono text-secondary whitespace-nowrap">
                     {new Date(p.timestamp * 1000).toLocaleTimeString()}
                   </td>
-                  <td className="px-3 py-1.5 mono text-primary">
+                  <td className="px-3 py-1.5 mono text-primary whitespace-nowrap">
                     0x{p.apid.toString(16).toUpperCase()}
                   </td>
-                  <td className="px-3 py-1.5">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     <span className="text-muted">{p.subsystem}</span> /{" "}
                     <span className="text-slate-200">{p.card}</span>
                   </td>

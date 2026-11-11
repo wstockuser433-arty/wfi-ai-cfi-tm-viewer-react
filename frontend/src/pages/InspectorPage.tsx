@@ -42,7 +42,7 @@ export function InspectorPage() {
         </div>
       </Card>
 
-      <div className="flex-1 min-h-0 grid grid-cols-[380px_1fr] gap-4">
+      <div className="flex-1 min-h-0 grid grid-cols-[minmax(420px,35%)_1fr] gap-4">
         <div className="min-h-0">
           <PacketListTable />
         </div>

@@ -16,6 +16,7 @@ async def history(
     subsystem: str | None = None,
     apid: int | None = None,
     limit: int = Query(5000, le=50000),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     conds = [PacketRow.ts >= start, PacketRow.ts <= end]
@@ -24,17 +25,26 @@ async def history(
     if apid is not None:
         conds.append(PacketRow.apid == apid)
 
+    # Get total count for this window
+    count_stmt = select(PacketRow.id).where(
+        PacketRow.ts >= start, 
+        PacketRow.ts <= end
+    )    
+    result = await db.execute(count_stmt)
+    total_count = len(result.all())
+
     stmt = (
         select(PacketRow)
         .where(and_(*conds))
         .order_by(PacketRow.ts)
         .limit(limit)
+        .offset(offset)
     )
     rows = (await db.execute(stmt)).scalars().all()
 
     # Return every field the frontend expects — crc_ok included
     return {
-        "count": len(rows),
+        "count": total_count,
         "packets": [
             {
                 "id": r.id,

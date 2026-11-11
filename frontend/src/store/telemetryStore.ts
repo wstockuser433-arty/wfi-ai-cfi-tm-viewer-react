@@ -36,7 +36,7 @@ interface TelemetryState {
   bookmarks: string[];
 
   // ─── Actions ────────────────────────────────────────
-  ingest: (batch: DecodedPacket[]) => void;
+  ingest: (batch: DecodedPacket[], isLive?: boolean) => void;  
   setLink: (s: LinkState) => void;
   setMeta: (m: MetaResponse) => void;
   clearAlarms: () => void;
@@ -91,7 +91,7 @@ export const useTelemetry = create<TelemetryState>()(
           };
         }),
 
-      ingest: (batch) =>
+      ingest: (batch: DecodedPacket[], isLive: boolean = true) =>
         set((state) => {
           if (!batch || batch.length === 0) return state;
 
@@ -137,7 +137,7 @@ export const useTelemetry = create<TelemetryState>()(
             latestByParam: latestParam,
             alarms: [...state.alarms, ...newAlarms].slice(-MAX_ALARMS),
             lastPacketAt: Date.now(),
-            totalReceived: state.totalReceived + batch.length,
+            totalReceived: isLive ? state.totalReceived + batch.length : state.totalReceived,
             selectedPacketId: nextSelected,
           };
         }),

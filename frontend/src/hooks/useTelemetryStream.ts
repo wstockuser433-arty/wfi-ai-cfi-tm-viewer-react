@@ -88,7 +88,7 @@ export function useTelemetryStream(url: string = WS_URL): void {
             timestamp: msg.t ?? buf.meta.timestamp ?? Date.now() / 1000,
           };
           console.log("PACKET KEYS:", Object.keys(packet.fields).slice(0, 5));
-          useTelemetry.getState().ingest([packet]);
+          useTelemetry.getState().ingest([packet], true);
           return;
         }
 

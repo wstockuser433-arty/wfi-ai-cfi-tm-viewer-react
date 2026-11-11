@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { API_BASE } from "@/lib/api";
-import { Download, Database, RefreshCw, Loader2, ExternalLink } from "lucide-react";
+import { Download, Database, RefreshCw, Loader2, ExternalLink, HardDriveDownload } from "lucide-react";
 
 interface PacketSummary {
   id: number;
@@ -12,6 +12,7 @@ interface PacketSummary {
   subsystem: string;
   card: string;
   crc_ok: boolean;
+  raw_hex?: string; // Added for export
 }
 
 export function StoragePage() {
@@ -20,6 +21,9 @@ export function StoragePage() {
   const [busy, setBusy] = useState(false);
   const [packets, setPackets] = useState<PacketSummary[]>([]);
   const [msg, setMsg] = useState("");
+  
+  // Track total packets in window independently of the table slice
+  const [totalInWindow, setTotalInWindow] = useState<number>(0);
 
   async function query() {
     setBusy(true);
@@ -31,6 +35,7 @@ export function StoragePage() {
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = await r.json();
       setPackets(j.packets ?? []);
+      setTotalInWindow(j.count ?? 0);
       setMsg(`${j.count} packets in window`);
     } catch (e) {
       setMsg(`query failed: ${e}`);
@@ -54,8 +59,45 @@ export function StoragePage() {
     downloadBlob(csv, `tm-export-${Date.now()}.csv`, "text/csv");
   }
 
+  async function downloadBin() {
+    setBusy(true);
+    setMsg("Preparing export...");
+    try {
+      const r = await fetch(
+        `${API_BASE}/api/history?start=${new Date(start).toISOString()}&end=${new Date(end).toISOString()}&limit=50000`
+      );
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const j = await r.json();
+      
+      const pkts = j.packets ?? [];
+      if (pkts.length === 0) {
+        setMsg("No packets to export.");
+        return;
+      }
+
+      // ⭐ Export as a JSON array containing { ts, raw_hex }
+      const exportData = pkts.map((p: PacketSummary) => ({
+        ts: new Date(p.ts).getTime() / 1000, // Convert ISO string to Unix epoch (seconds)
+        raw_hex: p.raw_hex
+      }));
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `tm-capture-${Date.now()}.json`; // <-- Changed extension
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      setMsg(`Downloaded ${pkts.length} packets to .json`);
+    } catch (e) {
+      setMsg(`export failed: ${e}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function openStandalone(packetId: number) {
-    // ⭐ Open in a new window
     window.open(`/standalone/packet/${packetId}`, "_blank", "width=1200,height=900");
   }
 
@@ -67,7 +109,7 @@ export function StoragePage() {
           <h3 className="text-sm font-semibold">TM Storage Explorer</h3>
         </div>
 
-        <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-3 items-end">
+        <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-3 items-end">
           <div>
             <label className="text-[10px] uppercase text-muted block mb-1">From</label>
             <input
@@ -93,6 +135,10 @@ export function StoragePage() {
           <Button onClick={exportCsv} className="flex items-center gap-1.5">
             <Download className="w-3.5 h-3.5" /> CSV
           </Button>
+          {/* ⭐ NEW BIN DOWNLOAD BUTTON */}
+          <Button onClick={downloadBin} disabled={busy} className="flex items-center gap-1.5">
+            <HardDriveDownload className="w-3.5 h-3.5" /> Export .json
+          </Button>
         </div>
 
         {msg && <div className="mono text-xs text-muted mt-3">{msg}</div>}
@@ -100,9 +146,19 @@ export function StoragePage() {
 
       {packets.length > 0 && (
         <Card>
-          <div className="text-sm font-semibold mb-3">
-            Results <span className="text-muted text-xs">({packets.length} packets)</span>
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm font-semibold">
+              Results <span className="text-muted text-xs">({packets.length} packets shown)</span>
+            </div>
+            {/* ⭐ UPPER LIMIT WARNING */}
+            {totalInWindow > packets.length && (
+              <div className="text-xs text-accent-amber">
+                Showing first {packets.length} of {totalInWindow.toLocaleString()} packets. 
+                (Download .bin will attempt to fetch all).
+              </div>
+            )}
           </div>
+          
           <div className="overflow-auto max-h-[600px]">
             <table className="w-full text-xs">
               <thead>
