@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { API_BASE } from "@/lib/api";
 import { Download, Database, RefreshCw, Loader2, ExternalLink, HardDriveDownload } from "lucide-react";
+import { useStorageStore } from "@/store/storageStore";
 
 interface PacketSummary {
   id: number;
@@ -16,14 +17,10 @@ interface PacketSummary {
 }
 
 export function StoragePage() {
-  const [start, setStart] = useState(() => toLocalInput(new Date(Date.now() - 3600_000)));
-  const [end, setEnd] = useState(() => toLocalInput(new Date()));
-  const [busy, setBusy] = useState(false);
-  const [packets, setPackets] = useState<PacketSummary[]>([]);
-  const [msg, setMsg] = useState("");
-  
-  // Track total packets in window independently of the table slice
-  const [totalInWindow, setTotalInWindow] = useState<number>(0);
+  const {
+    start, end, busy, packets, msg, totalInWindow,
+    setStart, setEnd, setBusy, setPackets, setMsg
+  } = useStorageStore();
 
   async function query() {
     setBusy(true);
@@ -34,8 +31,7 @@ export function StoragePage() {
       );
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = await r.json();
-      setPackets(j.packets ?? []);
-      setTotalInWindow(j.count ?? 0);
+      setPackets(j.packets ?? [], j.count ?? 0);
       setMsg(`${j.count} packets in window`);
     } catch (e) {
       setMsg(`query failed: ${e}`);
@@ -132,11 +128,10 @@ export function StoragePage() {
             {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
             Query
           </Button>
-          <Button onClick={exportCsv} className="flex items-center gap-1.5">
+          <Button onClick={exportCsv} className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-slate-200">
             <Download className="w-3.5 h-3.5" /> CSV
           </Button>
-          {/* ⭐ NEW BIN DOWNLOAD BUTTON */}
-          <Button onClick={downloadBin} disabled={busy} className="flex items-center gap-1.5">
+          <Button onClick={downloadBin} disabled={busy} className="flex items-center gap-1.5 bg-accent/20 hover:bg-accent/30 text-accent">
             <HardDriveDownload className="w-3.5 h-3.5" /> Export .json
           </Button>
         </div>
