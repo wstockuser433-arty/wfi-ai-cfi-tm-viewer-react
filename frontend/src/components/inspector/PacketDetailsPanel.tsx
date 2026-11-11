@@ -63,6 +63,17 @@ export function PacketDetailsPanel({ overridePacket, overrideBase }: Props) {
     URL.revokeObjectURL(url);
   };
 
+    // In PacketDetailsPanel.tsx
+  const handleSaveClick = () => {
+    const pid = packetId(selected);
+    toggleBookmark(pid);
+    
+    // ⭐ Force the main window to re-read localStorage if this is a standalone window
+    if (window.opener) {
+      window.opener.dispatchEvent(new Event("storage"));
+    }
+  };
+
   return (
     <Card className="h-full flex flex-col overflow-hidden">
       {/* Title bar with actions */}
@@ -93,7 +104,7 @@ export function PacketDetailsPanel({ overridePacket, overrideBase }: Props) {
             <Download className="w-3 h-3" /> BIN
           </Button>
           <Button
-            onClick={() => toggleBookmark(packetId(selected))}
+            onClick={handleSaveClick}
             className={cn(
               "flex items-center gap-1.5 text-xs py-1 h-7",
               isBookmarked && "bg-accent/20 text-accent border-accent/30"

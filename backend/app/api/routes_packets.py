@@ -52,12 +52,17 @@ async def packet_by_key(
     
     if row is None:
         raise HTTPException(status_code=404, detail="packet not found")
-        
-    return get_decoder(settings.tm_decoder).decode(
+
+    pkt_dict = get_decoder(settings.tm_decoder).decode(
         bytes.fromhex(row.raw_hex), row.ts.timestamp()
     )
+    
+    # ⭐ Inject the Postgres ID into the decoded dictionary
+    pkt_dict["id"] = row.id 
 
-# ⭐ NEW: Fetch a single packet by ID and decode it
+    return pkt_dict
+
+
 @router.get("/packets/{packet_id}")
 async def get_packet_by_id(packet_id: int, db: AsyncSession = Depends(get_db)):
     stmt = select(PacketRow).where(PacketRow.id == packet_id)
@@ -66,14 +71,12 @@ async def get_packet_by_id(packet_id: int, db: AsyncSession = Depends(get_db)):
     if not row:
         raise HTTPException(status_code=404, detail="Packet not found")
     
-    decoder = get_decoder(settings.tm_decoder)
-    raw_bytes = bytes.fromhex(row.raw_hex)
-    
-    try:
-        pkt_dict = decoder.decode(raw_bytes, row.ts.timestamp())
-        return pkt_dict
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Decode failed: {e}")
+    pkt_dict = get_decoder(settings.tm_decoder).decode(
+        bytes.fromhex(row.raw_hex), row.ts.timestamp()
+    )
+    # ⭐ Inject the Postgres ID into the dictionary
+    pkt_dict["id"] = row.id
+    return pkt_dict
 
 # @router.get("/packets/by-key")
 # async def packet_by_key(

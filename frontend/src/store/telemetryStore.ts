@@ -195,3 +195,12 @@ export const useTelemetry = create<TelemetryState>()(
     }
   )
 );
+
+// Sync Zustand store across tabs/windows
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key === "tm-viewer-telemetry") {
+      useTelemetry.persist.rehydrate();
+    }
+  });
+}

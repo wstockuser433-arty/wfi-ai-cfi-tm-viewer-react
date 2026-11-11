@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { PacketDetailsPanel } from "@/components/inspector/PacketDetailsPanel";
 import { Card } from "@/components/ui/card";
-import { API_BASE, type DecodedPacket } from "@/lib/api";
+import { API_BASE} from "@/lib/api";
+import type { DecodedPacket } from "@/types/packet";
 import { ArrowLeft } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 
@@ -63,9 +64,14 @@ export function StandalonePacketView() {
             Packet Inspector
           </div>
           
-          {/* ⭐ FIX: Read APID and Seq directly from the decoded packet object */}
           {packet && (
             <span className="mono text-[11px] text-muted flex items-center gap-2">
+              {packet.id && (
+                <>
+                  <span className="text-accent">DB #{packet.id}</span>
+                  <span>·</span>
+                </>
+              )}
               <span>APID 0x{packet.apid.toString(16).toUpperCase()}</span>
               <span>·</span>
               <span>Seq {packet.seq}</span>

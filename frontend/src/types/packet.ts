@@ -7,6 +7,7 @@ export interface DecodedField {
 }
 
 export interface DecodedPacket {
+  id?: number;
   cc: number;
   apid: number;
   apid_name: string;
