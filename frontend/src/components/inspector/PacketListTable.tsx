@@ -83,7 +83,7 @@ export function PacketListTable() {
 
         {/* Search bar gets flex-1 and a bigger width */}
         <div className="flex-1 min-w-[150px] relative">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted z-10" />
           <input
             type="text"
             value={search}
@@ -91,8 +91,9 @@ export function PacketListTable() {
               setSearch(e.target.value);
               setPage(0);
             }}
-            placeholder="Filter APID, subsystem…"
-            className="w-full bg-white/5 border border-white/10 rounded-md pl-8 pr-2 py-1 text-xs placeholder:text-muted focus:outline-none focus:border-accent/40"
+            // ⭐ THE FIX: Only show placeholder when search is empty
+            placeholder={search === "" ? "Filter APID, subsystem…" : ""}
+            className="w-full bg-white/5 border border-white/10 rounded-md pl-8 pr-2 py-1 text-xs text-slate-100 placeholder:text-muted/50 focus:outline-none focus:border-accent/40"
           />
         </div>
 

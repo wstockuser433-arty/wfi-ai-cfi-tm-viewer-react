@@ -2,11 +2,17 @@ import { useRef, useState } from "react";
 import { Upload, Loader2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { API_BASE } from "@/lib/api";
+import { useTelemetry } from "@/store/telemetryStore";
+import { packetId, type DecodedPacket } from "@/types/packet";
 
 export function UploadDumpButton() {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+
+  // Bring in the store actions
+  const ingest = useTelemetry((s) => s.ingest);
+  const setSelectedPacketId = useTelemetry((s) => s.setSelectedPacketId);
 
   async function handle(f: File) {
     setBusy(true);
@@ -16,6 +22,17 @@ export function UploadDumpButton() {
       fd.append("file", f);
       const r = await fetch(`${API_BASE}/api/upload`, { method: "POST", body: fd });
       const j = await r.json();
+      
+      // Assuming the backend returns { count: N, packets: DecodedPacket[] }
+      // (If it only returns count, we need to adjust the backend — see note below)
+      if (j.packets && j.packets.length > 0) {
+        const decoded: DecodedPacket[] = j.packets;
+        ingest(decoded);
+        
+        // Auto-select the first packet so the details panel populates
+        setSelectedPacketId(packetId(decoded[0]));
+      }
+      
       setMsg(`${j.count} packets decoded`);
     } catch (e) {
       setMsg(`failed: ${e}`);
