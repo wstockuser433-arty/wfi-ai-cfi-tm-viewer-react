@@ -96,3 +96,19 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now ebox-pty.service
 sudo systemctl status ebox-pty.service
 
+
+grep -rniE "(ICD|interface[[:space:]]+control[[:space:]]+document|§[[:space:]]*[0-9]|table[[:space:]]+[0-9]+|section[[:space:]]+[0-9]+)" \
+  . \
+  --exclude-dir={node_modules,.git,dist,build,venv,.venv,__pycache__,.pytest_cache,.mypy_cache,.ruff_cache} \
+  --exclude={*.log,*.lock,package-lock.json,yarn.lock,pnpm-lock.yaml}
+
+
+grep -rnE "(§|section|table)[[:space:]]*[45]\.[0-9]" \
+  . \
+  --exclude-dir={node_modules,.git,dist,build,venv,.venv,__pycache__} \
+  --exclude={*.log,*.lock,package-lock.json}
+
+
+find . \
+  -type d \( -name node_modules -o -name .git -o -name venv -o -name .venv -o -name dist -o -name build \) -prune -o \
+  -type f \( -iname "*icd*" -o -iname "*interface*control*" \) -print

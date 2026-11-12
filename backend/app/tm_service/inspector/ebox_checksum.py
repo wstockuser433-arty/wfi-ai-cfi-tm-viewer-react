@@ -2,7 +2,7 @@
 EBOX RS-422 Additive Checksum
 =============================
 
-Per ICD section 4.1: "The calculation method is the lower byte of the sum of
+Per section: "The calculation method is the lower byte of the sum of
 single-byte values in the checksum area."
 
 Checksum area = main header + sub-header + effective data field.
