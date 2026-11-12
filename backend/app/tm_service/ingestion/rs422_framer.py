@@ -2,7 +2,7 @@
 RS-422 Outer Frame Extractor (EBOX protocol)
 ============================================
 
-Per ICD section 3, every packet exchanged between CTPU and EBOX is wrapped in
+Per ICD, every packet exchanged between CTPU and EBOX is wrapped in
 a fixed 4-byte header and 4-byte trailer:
 
     ┌──────────────────────┐
