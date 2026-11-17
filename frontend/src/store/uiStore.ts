@@ -14,6 +14,8 @@ interface UiState {
   activePage: Page;
   setMode: (m: UiState["mode"]) => void;
   setPage: (p: Page) => void;
+  packetFilter: { unit_sub_id?: number; service?: number; subservice?: number } | null;
+  setPacketFilter: (filter: { unit_sub_id?: number; service?: number; subservice?: number } | null) => void;
   logsOpen: boolean;
   setLogsOpen: (open: boolean) => void;
 }
@@ -25,4 +27,6 @@ export const useUiStore = create<UiState>((set) => ({
   setPage: (activePage) => set({ activePage }),
   logsOpen: false,
   setLogsOpen: (open) => set({ logsOpen: open }),
+  packetFilter: null,
+  setPacketFilter: (packetFilter) => set({ packetFilter }),
 }));

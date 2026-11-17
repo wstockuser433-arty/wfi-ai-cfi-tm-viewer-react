@@ -1,0 +1,16 @@
+# CDPM_R (FPGA) Telemetry — placeholder
+# Unit ID: 0x6A | Sub-ID: 0x60 | Service: 0x03 | Sub-service: 0x19
+unit:
+  id: 0x6A
+  label: "CDPM_R_FPGA"
+
+cards:
+  CDPM_R_FPGA_TM:
+    label: "CDPM_R (FPGA) Telemetry"
+    unit_id: 0x6A
+    unit_sub_id: 0x60
+    service: 0x03
+    subservice: 0x19
+    subsystem: CDPM_R
+    hw_class: SW
+    fields: []

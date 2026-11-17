@@ -6,7 +6,11 @@ import { ChevronLeft, ChevronRight, Bookmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { packetId, type DecodedPacket } from "@/types/packet";
 
-export function PacketListTable() {
+interface Props {
+  filter?: { unit_sub_id?: number; service?: number; subservice?: number } | null;
+}
+
+export function PacketListTable({ filter }: Props) {
   const packets = useTelemetry((s) => s.packets);
   const selectedId = useTelemetry((s) => s.selectedPacketId);
   const setSelectedId = useTelemetry((s) => s.setSelectedPacketId);
@@ -31,8 +35,24 @@ export function PacketListTable() {
     return () => window.removeEventListener("click", handleClick);
   }, []);
 
+  // ⭐ Reset pagination when the filter changes (e.g., switching subservices)
+  useEffect(() => {
+    setPage(0);
+  }, [filter]);
+
   const filteredPackets = useMemo(() => {
     let sorted = [...packets].reverse();
+
+    // ⭐ Apply the subservice filter from the sidebar
+    if (filter) {
+      sorted = sorted.filter((p) =>
+        (filter.unit_sub_id === undefined || p.unit_sub_id === filter.unit_sub_id) &&
+        (filter.service === undefined || p.service_type === filter.service) &&
+        (filter.subservice === undefined || p.service_subtype === filter.subservice)
+      );
+    }
+
+    // Apply the search text filter
     if (search) {
       const q = search.toLowerCase();
       sorted = sorted.filter(
@@ -44,7 +64,7 @@ export function PacketListTable() {
       );
     }
     return sorted;
-  }, [packets, search]);
+  }, [packets, search, filter]);
 
   const totalPages = Math.ceil(filteredPackets.length / pageSize) || 1;
   const currentBatch = filteredPackets.slice(

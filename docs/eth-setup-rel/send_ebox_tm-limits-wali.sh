@@ -94,6 +94,10 @@ set -euo pipefail
 # Format: "CARD_KEY|unit_sub_id|service|subservice|description"
 ALL_CARDS=(
   "CAMERA_UNIT_STATUS|16|104|1|Camera Unit Status Telemetry"
+  "CAMERA_MOTION_CALC|16|104|2|Image Motion Calculation Result"
+  "CAMERA_MOTION_COEFF|16|104|3|Image Motion Coefficient"
+  "CAMERA_TERRAIN_ELEV|16|104|4|Terrain Elevation Data"
+  "CTPU_TM|48|3|25|CTPU Telemetry"
 )
 
 declare -A CARD_SUBID=()
@@ -216,6 +220,30 @@ REALISTIC_RAW_VALUES = {
     "current_grating_scale": (75000, 85000),
     "img_mod1_fw_version": (20240101, 20250101),
     "img_mod2_fw_version": (20240101, 20250101),
+
+    # Camera motion-calc fields
+    "drift_angle": (0.0001, 0.0008),
+    "drift_angle_residual": (-0.0001, 0.0001),
+    "longitudinal_image_motion_velocity": (90, 110),
+    "transverse_image_motion_velocity": (5, 15),
+    "image_motion_velocity": (95, 115),
+    "geographic_longitude": (70.0, 80.0),
+    "geographic_latitude": (25.0, 35.0),
+    "terrain_elevation_1": (0, 500),
+    "terrain_elevation_2": (0, 500),
+    "terrain_elevation_3": (0, 500),
+    "terrain_elevation_4": (0, 500),
+    "expected_roll_angle": (-0.05, 0.05),
+    "expected_pitch_angle": (-0.05, 0.05),
+    "expected_yaw_angle": (-0.05, 0.05),
+    "expected_roll_angular_velocity": (-0.02, 0.02),
+    "expected_pitch_angular_velocity": (-0.02, 0.02),
+    "expected_yaw_angular_velocity": (-0.02, 0.02),
+
+    # Motion coeff
+    "acb_0_0": (-2.0, 2.0),
+    "acb_0_1": (-2.0, 2.0),
+    "acb_0_2": (-2.0, 2.0),
 }
 
 # Nominal enum states (unchanged from before)
@@ -367,6 +395,21 @@ def value(key, f, seq, elapsed):
         return v
 
     # 2. Realistic raw values (for fields with calc formulas)
+    if name.startswith("terrain_elevation_"):
+        h = zlib.crc32(name.encode())
+        lo, hi = 0, 500
+        mid = (lo + hi) / 2
+        period = 40 + h % 41
+        phase = ((h >> 8) % 360) * math.pi / 180.0
+        return int(mid + (hi - lo) / 2 * math.sin(2 * math.pi * seq / period + phase))
+    
+    if name.startswith("acb_") or name.startswith("acs_"):
+        h = zlib.crc32(name.encode())
+        mid, half = 0.0, 2.0
+        period = 40 + h % 41
+        phase = ((h >> 8) % 360) * math.pi / 180.0
+        return mid + half * math.sin(2 * math.pi * seq / period + phase)
+
     if name in REALISTIC_RAW_VALUES:
         lo, hi = REALISTIC_RAW_VALUES[name]
         mid = (lo + hi) / 2.0

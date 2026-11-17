@@ -6,8 +6,10 @@ import { UploadDumpButton } from "@/components/inspector/UploadDumpButton";
 import { GitCompare } from "lucide-react";
 import { useTelemetry } from "@/store/telemetryStore";
 import { cn } from "@/lib/utils";
+import { useUiStore } from "@/store/uiStore";
 
 export function InspectorPage() {
+  const packetFilter = useUiStore((s) => s.packetFilter);
   const diffBaseId = useTelemetry((s) => s.diffBaseId);
   const setDiffBaseId = useTelemetry((s) => s.setDiffBaseId);
 
@@ -44,7 +46,7 @@ export function InspectorPage() {
 
       <div className="flex-1 min-h-0 grid grid-cols-[minmax(420px,35%)_1fr] gap-4">
         <div className="min-h-0">
-          <PacketListTable />
+          <PacketListTable filter={packetFilter} />
         </div>
         <div className="min-h-0">
           <PacketDetailsPanel />

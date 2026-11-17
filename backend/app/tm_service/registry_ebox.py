@@ -2,8 +2,13 @@
 EBOX Registry
 =============
 
-Loads `app/tm_dictionary/ebox.yaml` and exposes fast lookup by the
-4-tuple (unit_id, unit_sub_id, service, subservice).
+Loads every `*.yaml` file under `app/tm_dictionary/` and exposes fast
+lookup by the 4-tuple (unit_id, unit_sub_id, service, subservice).
+
+Each yaml file represents one subsystem (or one subservice of a subsystem).
+The filename is used only for logging — the authoritative source of truth
+for the 4-tuple is the `unit_sub_id` / `service` / `subservice` fields
+inside the card definitions themselves.
 
 Unlike the standard TmRegistry (which is keyed by APID), the EBOX
 protocol multiplexes all telemetry through a single APID (0x2B) and
@@ -13,6 +18,7 @@ discriminates by the 4-tuple.
 from __future__ import annotations
 
 import logging
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -33,13 +39,29 @@ STRUCT_SIZE = {
 # Calc expressions are validated against this whitelist. Anything not
 # matching is rejected at load time so we never feed arbitrary strings
 # into the calculator.
-import re
 SAFE_CALC_RE = re.compile(
     r"^(?:[A-Za-z_][A-Za-z0-9_]*(?:\(D\))?"
     r"|D(?:\s*[+\-*/]\s*[\d.]+)+"
     r"|[\d.]+(?:\s*[+\-*/]\s*D)+"
     r"|[\d.]+(?:\s*[+\-*/]\s*[\d.]+)+)$"
 )
+
+
+# ─── Subsystem display metadata ────────────────────────────────────────
+SUBSYSTEM_LABELS = {
+    "CAMERA": "Camera Subsystem",
+    "CTPU": "CTPU",
+    "CDPM_P": "CDPM (Primary)",
+    "CDPM_R": "CDPM (Redundant)",
+    "EBOX": "EBOX",
+}
+SUBSYSTEM_COLORS = {
+    "CAMERA": "#8494DA",      # Match colors.ts
+    "CTPU": "#FFB020",
+    "CDPM_P": "#22C55E",
+    "CDPM_R": "#F59E0B",
+    "EBOX": "#8B95A9",
+}
 
 
 class EboxRegistry:
@@ -51,56 +73,111 @@ class EboxRegistry:
 
     # ------------------------------------------------------------------ #
     def _load(self) -> None:
-        path = DICT_DIR / "ebox.yaml"
-        if not path.exists():
+        yaml_files = sorted(DICT_DIR.glob("*.yaml"))
+        if not yaml_files:
             raise FileNotFoundError(
-                f"EBOX dictionary not found at {path}. "
-                f"Create it or set TM_DECODER to a different value."
+                f"No *.yaml files found in {DICT_DIR}. "
+                f"Create at least one TM dictionary file."
             )
 
-        with open(path, "r", encoding="utf-8") as fh:
-            data = yaml.safe_load(fh)
+        log.info("Loading %d TM dictionary file(s) from %s", len(yaml_files), DICT_DIR)
 
-        self.unit = data.get("unit", {}) or {}
-        cards = data.get("cards", {}) or {}
+        # Remember the first non-empty `unit:` block — it becomes the
+        # top-level `unit` in `meta()`. Subsystem-specific unit labels
+        # are stored per-card.
+        first_unit_block: dict[str, Any] | None = None
 
-        for card_key, card in cards.items():
-            if not isinstance(card, dict):
-                raise ValueError(f"ebox.yaml card '{card_key}' must be a mapping")
+        for path in yaml_files:
+            try:
+                with open(path, "r", encoding="utf-8") as fh:
+                    data = yaml.safe_load(fh) or {}
+            except Exception as e:
+                log.exception("Failed to parse %s: %s", path.name, e)
+                raise
 
-            for req in ("unit_id", "unit_sub_id", "service", "subservice"):
-                if req not in card:
-                    raise ValueError(
-                        f"ebox.yaml card '{card_key}' missing '{req}'"
-                    )
+            file_unit = data.get("unit") or {}
+            if first_unit_block is None and file_unit:
+                first_unit_block = file_unit
 
-            quad = (
-                int(card["unit_id"]),
-                int(card["unit_sub_id"]),
-                int(card["service"]),
-                int(card["subservice"]),
-            )
-            if quad in self.quad_map:
-                raise ValueError(
-                    f"ebox.yaml duplicate 4-tuple {quad} "
-                    f"({card_key} vs {self.quad_map[quad]['card']})"
+            cards = data.get("cards") or {}
+            if not cards:
+                log.info("  %s — no cards (placeholder file)", path.name)
+                continue
+
+            for card_key, card in cards.items():
+                self._register_card(
+                    file_name=path.name,
+                    file_unit=file_unit,
+                    card_key=card_key,
+                    card=card,
                 )
 
-            entry = {
-                **card,
-                "card": card_key,
-                "card_label": card.get("label", card_key),
-                "subsystem": card.get("subsystem", "EBOX"),
-                "hw_class": card.get("hw_class", "HW"),
-            }
-            self.cards[card_key] = entry
-            self.quad_map[quad] = entry
+        self.unit = first_unit_block or {"id": 0x1A, "label": "EBOX"}
 
+        # Guard against duplicated card keys across files. Card keys are
+        # unique in YAML by definition, but two files could both define
+        # `CAMERA_UNIT_STATUS`. That would silently merge or overwrite —
+        # raise so the developer notices.
         self._validate()
         log.info(
-            "EBOX registry loaded: %d cards, %d unique 4-tuples",
-            len(self.cards), len(self.quad_map),
+            "EBOX registry loaded: %d cards, %d unique 4-tuples, %d subsystems",
+            len(self.cards),
+            len(self.quad_map),
+            len({c["subsystem"] for c in self.cards.values()}),
         )
+
+    # ------------------------------------------------------------------ #
+    def _register_card(
+        self,
+        file_name: str,
+        file_unit: dict[str, Any],
+        card_key: str,
+        card: dict[str, Any],
+    ) -> None:
+        if not isinstance(card, dict):
+            raise ValueError(f"{file_name}: card '{card_key}' must be a mapping")
+
+        # Card-level unit_id wins; fall back to file-level `unit.id`
+        if "unit_id" not in card:
+            if "id" not in file_unit:
+                raise ValueError(
+                    f"{file_name}: card '{card_key}' has no `unit_id` and "
+                    f"the file's `unit:` block has no `id`"
+                )
+            card = {**card, "unit_id": file_unit["id"]}
+
+        for req in ("unit_id", "unit_sub_id", "service", "subservice"):
+            if req not in card:
+                raise ValueError(f"{file_name}: card '{card_key}' missing '{req}'")
+
+        quad = (
+            int(card["unit_id"]),
+            int(card["unit_sub_id"]),
+            int(card["service"]),
+            int(card["subservice"]),
+        )
+        if quad in self.quad_map:
+            raise ValueError(
+                f"{file_name}: duplicate 4-tuple {quad} "
+                f"({card_key} vs {self.quad_map[quad]['card']})"
+            )
+
+        if card_key in self.cards:
+            raise ValueError(
+                f"{file_name}: duplicate card key '{card_key}' "
+                f"(already defined in {self.cards[card_key]['file']})"
+            )
+
+        entry = {
+            **card,
+            "card": card_key,
+            "card_label": card.get("label", card_key),
+            "subsystem": card.get("subsystem", file_unit.get("label", "EBOX")),
+            "hw_class": card.get("hw_class", "HW"),
+            "file": file_name,
+        }
+        self.cards[card_key] = entry
+        self.quad_map[quad] = entry
 
     # ------------------------------------------------------------------ #
     def _validate(self) -> None:
@@ -108,7 +185,7 @@ class EboxRegistry:
             fields = card.get("fields", [])
             if not isinstance(fields, list):
                 raise ValueError(
-                    f"ebox.yaml card '{card_key}': fields must be a list"
+                    f"{card['file']}: card '{card_key}': fields must be a list"
                 )
 
             seen: list[tuple[int, int, str]] = []
@@ -124,110 +201,58 @@ class EboxRegistry:
     ) -> None:
         if not isinstance(f, dict):
             raise ValueError(
-                f"ebox.yaml {card_key}[{idx}]: field must be a mapping, "
+                f"{card_key}[{idx}]: field must be a mapping, "
                 f"got {type(f).__name__}"
             )
         for k in ("name", "offset", "type"):
             if k not in f:
-                raise ValueError(f"ebox.yaml {card_key}[{idx}] missing '{k}'")
+                raise ValueError(f"{card_key}[{idx}] missing '{k}'")
 
         typ = f["type"]
         if typ not in VALID_TYPES:
-            raise ValueError(
-                f"ebox.yaml {card_key}.{f['name']}: bad type '{typ}'"
-            )
+            raise ValueError(f"{card_key}.{f['name']}: bad type '{typ}'")
 
-        # Fields with `calc:` are *derived* views of another field.
-        # They share the payload bytes of their `calc_from` parent,
-        # so they don't need to be registered in the occupancy map.
+        # ── calc fields: derived views, share bytes with parent ─────────
         from .inspector.ebox_calcs import CALC_FUNCS
         if "calc" in f:
             calc = str(f["calc"]).strip()
             if calc not in CALC_FUNCS:
                 raise ValueError(
-                    f"ebox.yaml {card_key}.{f['name']}: unknown calc function "
+                    f"{card_key}.{f['name']}: unknown calc function "
                     f"'{calc}' (valid: {sorted(CALC_FUNCS)})"
                 )
             if "calc_from" not in f:
                 raise ValueError(
-                    f"ebox.yaml {card_key}.{f['name']}: 'calc' requires 'calc_from'"
+                    f"{card_key}.{f['name']}: 'calc' requires 'calc_from'"
                 )
-            return
-        
-        if "calc" in f:
-            # Still validate the calc expression itself
-            calc = str(f["calc"]).strip()
-            if not SAFE_CALC_RE.match(calc):
-                raise ValueError(
-                    f"ebox.yaml {card_key}.{f['name']}: unsafe calc expr "
-                    f"'{calc}' (must be a whitelisted function or simple "
-                    f"arithmetic of D)"
-                )
-            if "calc_from" not in f:
-                raise ValueError(
-                    f"ebox.yaml {card_key}.{f['name']}: 'calc' requires 'calc_from'"
-                )
-            return  # skip overlap check — derived field
+            return  # derived — skip overlap check
 
-        # Otherwise validate as a normal physical field
+        # ── physical field: register its span ──────────────────────────
         start = int(f["offset"])
         end = start + STRUCT_SIZE[typ]
         for (s, e, other) in seen:
             if not (end <= s or start >= e):
                 raise ValueError(
-                    f"ebox.yaml {card_key}: '{f['name']}' overlaps '{other}'"
+                    f"{card_key}: '{f['name']}' overlaps '{other}'"
                 )
         seen.append((start, end, f["name"]))
 
-        # ── bitfield validation (unchanged) ───────────────────────────────
+        # ── bitfields ───────────────────────────────────────────────────
         if "bits" in f:
             if typ not in ("u8", "u16", "u32", "u24"):
                 raise ValueError(
-                    f"ebox.yaml {card_key}.{f['name']}: bitfields only "
-                    f"supported on u8/u16/u24/u32, got '{typ}'"
+                    f"{card_key}.{f['name']}: bitfields only supported on "
+                    f"u8/u16/u24/u32, got '{typ}'"
                 )
             if not isinstance(f["bits"], list):
                 raise ValueError(
-                    f"ebox.yaml {card_key}.{f['name']}: 'bits' must be a list"
+                    f"{card_key}.{f['name']}: 'bits' must be a list"
                 )
             for b in f["bits"]:
                 if not isinstance(b, dict) or "name" not in b:
                     raise ValueError(
-                        f"ebox.yaml {card_key}.{f['name']}: every bit "
-                        f"spec must be a mapping with 'name'"
-                    )
-
-        # ── calc validation ─────────────────────────────────────────
-        if "calc" in f:
-            calc = str(f["calc"]).strip()
-            if not SAFE_CALC_RE.match(calc):
-                raise ValueError(
-                    f"ebox.yaml {card_key}.{f['name']}: unsafe calc expr "
-                    f"'{calc}' (must be a whitelisted function or simple "
-                    f"arithmetic of D)"
-                )
-            if "calc_from" not in f:
-                raise ValueError(
-                    f"ebox.yaml {card_key}.{f['name']}: 'calc' requires "
-                    f"'calc_from'"
-                )
-
-        # ── bitfield validation ─────────────────────────────────────
-        if "bits" in f:
-            if typ not in ("u8", "u16", "u32", "u24"):
-                raise ValueError(
-                    f"ebox.yaml {card_key}.{f['name']}: bitfields only "
-                    f"supported on u8/u16/u24/u32, got '{typ}'"
-                )
-            if not isinstance(f["bits"], list):
-                raise ValueError(
-                    f"ebox.yaml {card_key}.{f['name']}: 'bits' must be a list"
-                )
-            for b in f["bits"]:
-                if not isinstance(b, dict) or "name" not in b:
-                    raise ValueError(
-                        f"ebox.yaml {card_key}.{f['name']}: every bit "
-                        f"spec must be a mapping with 'name'"
+                        f"{card_key}.{f['name']}: every bit spec must be a "
+                        f"mapping with 'name'"
                     )
 
     # ------------------------------------------------------------------ #
@@ -247,45 +272,52 @@ class EboxRegistry:
         """
         Frontend /api/meta payload.
 
-        Shape matches TmRegistry.meta() so the existing React UI works
-        unchanged:
+        Shape:
             {
-              "subsystems": {...},
+              "unit": { "id": int, "label": str },
+              "subsystems": {
+                "<SUBSYSTEM>": {
+                  "label": str,
+                  "color": str,
+                  "cards": {
+                    "<card_key>": {
+                      "label": str,
+                      "apid": int,
+                      "hw_class": str,
+                      "fields": [...],
+                      "unit_id": int,
+                      "unit_sub_id": int,
+                      "service": int,
+                      "subservice": int,
+                    }
+                  }
+                }
+              },
               "links": [],
               "apids": [...],
-              "unit": { "id": int, "label": str },
             }
         """
-        SUBSYSTEM_LABELS = {
-            "CAMERA": "Camera Subsystem",
-            "CTPU": "CTPU",
-            "CDPM_P": "CDPM (Primary)",
-            "CDPM_R_AI": "CDPM (Redundant) AI",
-            "CDPM_R_FPGA": "CDPM (Redundant) FPGA",
-            "EBOX": "EBOX",
-        }
-        SUBSYSTEM_COLORS = {
-            "CAMERA": "#00E5FF",
-            "CTPU": "#22C55E",
-            "CDPM_P": "#16A34A",
-            "CDPM_R_AI": "#FFB020",
-            "CDPM_R_FPGA": "#F59E0B",
-            "EBOX": "#8B95A9",
-        }
-
         subsystems: dict[str, dict[str, Any]] = {}
         apids: list[dict[str, Any]] = []
 
+        # ⭐ 1. Pre-seed the required subsystems so they always show up
+        for req in ["CAMERA", "EBOX", "CTPU", "CDPM_P", "CDPM_R"]:
+            subsystems[req] = {
+                "label": SUBSYSTEM_LABELS.get(req, req),
+                "color": SUBSYSTEM_COLORS.get(req, "#8B95A9"),
+                "cards": {},
+            }
+
+        # 2. Populate with actual cards
         for card_key, card in self.cards.items():
             sub_key = card["subsystem"]
+            # In case a YAML defines a subsystem not in our list, add it
             sub = subsystems.setdefault(sub_key, {
                 "label": SUBSYSTEM_LABELS.get(sub_key, sub_key),
                 "color": SUBSYSTEM_COLORS.get(sub_key, "#8B95A9"),
                 "cards": {},
             })
 
-            # Frontend keys everything off `card.apid`. For EBOX we use
-            # unit_sub_id as the key, matching what EboxDecoder emits.
             apid_key = int(card["unit_sub_id"])
 
             sub["cards"][card_key] = {

@@ -1,0 +1,138 @@
+# ============================================================
+# Camera Unit — Terrain Elevation Data Telemetry
+# ICD §5.6 Table 3
+# Unit ID: 0x1A | Sub-ID: 0x10 | Service: 0x68 | Sub-service: 0x04
+# Payload: 115 elevation samples (s16 each) = 230 bytes, padded to 238
+# ============================================================
+
+unit:
+  id: 0x1A
+  label: "CAMERA"
+
+cards:
+
+  CAMERA_TERRAIN_ELEV:
+    label: "Terrain Elevation Data Telemetry"
+    unit_id: 0x1A
+    unit_sub_id: 0x10
+    service: 0x68
+    subservice: 0x04
+    subsystem: CAMERA
+    hw_class: HW
+    fields:
+      # 115 elevation samples, s16 each. Offsets are 2*(n-1).
+      - { name: terrain_elevation_001, offset: 0,   type: i16, unit: "m" }
+      - { name: terrain_elevation_002, offset: 2,   type: i16, unit: "m" }
+      - { name: terrain_elevation_003, offset: 4,   type: i16, unit: "m" }
+      - { name: terrain_elevation_004, offset: 6,   type: i16, unit: "m" }
+      - { name: terrain_elevation_005, offset: 8,   type: i16, unit: "m" }
+      - { name: terrain_elevation_006, offset: 10,  type: i16, unit: "m" }
+      - { name: terrain_elevation_007, offset: 12,  type: i16, unit: "m" }
+      - { name: terrain_elevation_008, offset: 14,  type: i16, unit: "m" }
+      - { name: terrain_elevation_009, offset: 16,  type: i16, unit: "m" }
+      - { name: terrain_elevation_010, offset: 18,  type: i16, unit: "m" }
+      - { name: terrain_elevation_011, offset: 20,  type: i16, unit: "m" }
+      - { name: terrain_elevation_012, offset: 22,  type: i16, unit: "m" }
+      - { name: terrain_elevation_013, offset: 24,  type: i16, unit: "m" }
+      - { name: terrain_elevation_014, offset: 26,  type: i16, unit: "m" }
+      - { name: terrain_elevation_015, offset: 28,  type: i16, unit: "m" }
+      - { name: terrain_elevation_016, offset: 30,  type: i16, unit: "m" }
+      - { name: terrain_elevation_017, offset: 32,  type: i16, unit: "m" }
+      - { name: terrain_elevation_018, offset: 34,  type: i16, unit: "m" }
+      - { name: terrain_elevation_019, offset: 36,  type: i16, unit: "m" }
+      - { name: terrain_elevation_020, offset: 38,  type: i16, unit: "m" }
+      - { name: terrain_elevation_021, offset: 40,  type: i16, unit: "m" }
+      - { name: terrain_elevation_022, offset: 42,  type: i16, unit: "m" }
+      - { name: terrain_elevation_023, offset: 44,  type: i16, unit: "m" }
+      - { name: terrain_elevation_024, offset: 46,  type: i16, unit: "m" }
+      - { name: terrain_elevation_025, offset: 48,  type: i16, unit: "m" }
+      - { name: terrain_elevation_026, offset: 50,  type: i16, unit: "m" }
+      - { name: terrain_elevation_027, offset: 52,  type: i16, unit: "m" }
+      - { name: terrain_elevation_028, offset: 54,  type: i16, unit: "m" }
+      - { name: terrain_elevation_029, offset: 56,  type: i16, unit: "m" }
+      - { name: terrain_elevation_030, offset: 58,  type: i16, unit: "m" }
+      - { name: terrain_elevation_031, offset: 60,  type: i16, unit: "m" }
+      - { name: terrain_elevation_032, offset: 62,  type: i16, unit: "m" }
+      - { name: terrain_elevation_033, offset: 64,  type: i16, unit: "m" }
+      - { name: terrain_elevation_034, offset: 66,  type: i16, unit: "m" }
+      - { name: terrain_elevation_035, offset: 68,  type: i16, unit: "m" }
+      - { name: terrain_elevation_036, offset: 70,  type: i16, unit: "m" }
+      - { name: terrain_elevation_037, offset: 72,  type: i16, unit: "m" }
+      - { name: terrain_elevation_038, offset: 74,  type: i16, unit: "m" }
+      - { name: terrain_elevation_039, offset: 76,  type: i16, unit: "m" }
+      - { name: terrain_elevation_040, offset: 78,  type: i16, unit: "m" }
+      - { name: terrain_elevation_041, offset: 80,  type: i16, unit: "m" }
+      - { name: terrain_elevation_042, offset: 82,  type: i16, unit: "m" }
+      - { name: terrain_elevation_043, offset: 84,  type: i16, unit: "m" }
+      - { name: terrain_elevation_044, offset: 86,  type: i16, unit: "m" }
+      - { name: terrain_elevation_045, offset: 88,  type: i16, unit: "m" }
+      - { name: terrain_elevation_046, offset: 90,  type: i16, unit: "m" }
+      - { name: terrain_elevation_047, offset: 92,  type: i16, unit: "m" }
+      - { name: terrain_elevation_048, offset: 94,  type: i16, unit: "m" }
+      - { name: terrain_elevation_049, offset: 96,  type: i16, unit: "m" }
+      - { name: terrain_elevation_050, offset: 98,  type: i16, unit: "m" }
+      - { name: terrain_elevation_051, offset: 100, type: i16, unit: "m" }
+      - { name: terrain_elevation_052, offset: 102, type: i16, unit: "m" }
+      - { name: terrain_elevation_053, offset: 104, type: i16, unit: "m" }
+      - { name: terrain_elevation_054, offset: 106, type: i16, unit: "m" }
+      - { name: terrain_elevation_055, offset: 108, type: i16, unit: "m" }
+      - { name: terrain_elevation_056, offset: 110, type: i16, unit: "m" }
+      - { name: terrain_elevation_057, offset: 112, type: i16, unit: "m" }
+      - { name: terrain_elevation_058, offset: 114, type: i16, unit: "m" }
+      - { name: terrain_elevation_059, offset: 116, type: i16, unit: "m" }
+      - { name: terrain_elevation_060, offset: 118, type: i16, unit: "m" }
+      - { name: terrain_elevation_061, offset: 120, type: i16, unit: "m" }
+      - { name: terrain_elevation_062, offset: 122, type: i16, unit: "m" }
+      - { name: terrain_elevation_063, offset: 124, type: i16, unit: "m" }
+      - { name: terrain_elevation_064, offset: 126, type: i16, unit: "m" }
+      - { name: terrain_elevation_065, offset: 128, type: i16, unit: "m" }
+      - { name: terrain_elevation_066, offset: 130, type: i16, unit: "m" }
+      - { name: terrain_elevation_067, offset: 132, type: i16, unit: "m" }
+      - { name: terrain_elevation_068, offset: 134, type: i16, unit: "m" }
+      - { name: terrain_elevation_069, offset: 136, type: i16, unit: "m" }
+      - { name: terrain_elevation_070, offset: 138, type: i16, unit: "m" }
+      - { name: terrain_elevation_071, offset: 140, type: i16, unit: "m" }
+      - { name: terrain_elevation_072, offset: 142, type: i16, unit: "m" }
+      - { name: terrain_elevation_073, offset: 144, type: i16, unit: "m" }
+      - { name: terrain_elevation_074, offset: 146, type: i16, unit: "m" }
+      - { name: terrain_elevation_075, offset: 148, type: i16, unit: "m" }
+      - { name: terrain_elevation_076, offset: 150, type: i16, unit: "m" }
+      - { name: terrain_elevation_077, offset: 152, type: i16, unit: "m" }
+      - { name: terrain_elevation_078, offset: 154, type: i16, unit: "m" }
+      - { name: terrain_elevation_079, offset: 156, type: i16, unit: "m" }
+      - { name: terrain_elevation_080, offset: 158, type: i16, unit: "m" }
+      - { name: terrain_elevation_081, offset: 160, type: i16, unit: "m" }
+      - { name: terrain_elevation_082, offset: 162, type: i16, unit: "m" }
+      - { name: terrain_elevation_083, offset: 164, type: i16, unit: "m" }
+      - { name: terrain_elevation_084, offset: 166, type: i16, unit: "m" }
+      - { name: terrain_elevation_085, offset: 168, type: i16, unit: "m" }
+      - { name: terrain_elevation_086, offset: 170, type: i16, unit: "m" }
+      - { name: terrain_elevation_087, offset: 172, type: i16, unit: "m" }
+      - { name: terrain_elevation_088, offset: 174, type: i16, unit: "m" }
+      - { name: terrain_elevation_089, offset: 176, type: i16, unit: "m" }
+      - { name: terrain_elevation_090, offset: 178, type: i16, unit: "m" }
+      - { name: terrain_elevation_091, offset: 180, type: i16, unit: "m" }
+      - { name: terrain_elevation_092, offset: 182, type: i16, unit: "m" }
+      - { name: terrain_elevation_093, offset: 184, type: i16, unit: "m" }
+      - { name: terrain_elevation_094, offset: 186, type: i16, unit: "m" }
+      - { name: terrain_elevation_095, offset: 188, type: i16, unit: "m" }
+      - { name: terrain_elevation_096, offset: 190, type: i16, unit: "m" }
+      - { name: terrain_elevation_097, offset: 192, type: i16, unit: "m" }
+      - { name: terrain_elevation_098, offset: 194, type: i16, unit: "m" }
+      - { name: terrain_elevation_099, offset: 196, type: i16, unit: "m" }
+      - { name: terrain_elevation_100, offset: 198, type: i16, unit: "m" }
+      - { name: terrain_elevation_101, offset: 200, type: i16, unit: "m" }
+      - { name: terrain_elevation_102, offset: 202, type: i16, unit: "m" }
+      - { name: terrain_elevation_103, offset: 204, type: i16, unit: "m" }
+      - { name: terrain_elevation_104, offset: 206, type: i16, unit: "m" }
+      - { name: terrain_elevation_105, offset: 208, type: i16, unit: "m" }
+      - { name: terrain_elevation_106, offset: 210, type: i16, unit: "m" }
+      - { name: terrain_elevation_107, offset: 212, type: i16, unit: "m" }
+      - { name: terrain_elevation_108, offset: 214, type: i16, unit: "m" }
+      - { name: terrain_elevation_109, offset: 216, type: i16, unit: "m" }
+      - { name: terrain_elevation_110, offset: 218, type: i16, unit: "m" }
+      - { name: terrain_elevation_111, offset: 220, type: i16, unit: "m" }
+      - { name: terrain_elevation_112, offset: 222, type: i16, unit: "m" }
+      - { name: terrain_elevation_113, offset: 224, type: i16, unit: "m" }
+      - { name: terrain_elevation_114, offset: 226, type: i16, unit: "m" }
+      - { name: terrain_elevation_115, offset: 228, type: i16, unit: "m" }

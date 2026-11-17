@@ -1,0 +1,57 @@
+# ============================================================
+# Camera Unit — Image Motion Coefficient Telemetry Return
+# ICD §5.5 Table 2
+# Unit ID: 0x1A | Sub-ID: 0x10 | Service: 0x68 | Sub-service: 0x03
+# ============================================================
+
+unit:
+  id: 0x1A
+  label: "CAMERA"
+
+cards:
+
+  CAMERA_MOTION_COEFF:
+    label: "Image Motion Coefficient Telemetry"
+    unit_id: 0x1A
+    unit_sub_id: 0x10
+    service: 0x68
+    subservice: 0x03
+    subsystem: CAMERA
+    hw_class: HW
+    fields:
+      - { name: image_motion_parameter_version, offset: 0, type: u8, unit: "-" }
+
+      # Acb matrix (3x3, f32 each)
+      - { name: acb_0_0, offset: 1,  type: f32, unit: "-" }
+      - { name: acb_0_1, offset: 5,  type: f32, unit: "-" }
+      - { name: acb_0_2, offset: 9,  type: f32, unit: "-" }
+      - { name: acb_1_0, offset: 13, type: f32, unit: "-" }
+      - { name: acb_1_1, offset: 17, type: f32, unit: "-" }
+      - { name: acb_1_2, offset: 21, type: f32, unit: "-" }
+      - { name: acb_2_0, offset: 25, type: f32, unit: "-" }
+      - { name: acb_2_1, offset: 29, type: f32, unit: "-" }
+      - { name: acb_2_2, offset: 33, type: f32, unit: "-" }
+
+      - { name: acs_p1,   offset: 37, type: f32, unit: "-" }
+      - { name: acs_p2,   offset: 41, type: f32, unit: "-" }
+      - { name: acs_f,    offset: 45, type: f32, unit: "-" }
+      - { name: acs_a_0,  offset: 49, type: f32, unit: "-" }
+      - { name: acs_a_1,  offset: 53, type: f32, unit: "-" }
+      - { name: acs_a_2,  offset: 57, type: f32, unit: "-" }
+      - { name: acs_b_0,  offset: 61, type: f32, unit: "-" }
+      - { name: acs_b_1,  offset: 65, type: f32, unit: "-" }
+      - { name: acs_c_0_0, offset: 69, type: f32, unit: "-" }
+      - { name: acs_c_0_1, offset: 73, type: f32, unit: "-" }
+      - { name: acs_c_0_2, offset: 77, type: f32, unit: "-" }
+      - { name: acs_c_1_0, offset: 81, type: f32, unit: "-" }
+      - { name: acs_c_1_1, offset: 85, type: f32, unit: "-" }
+      - { name: acs_c_1_2, offset: 89, type: f32, unit: "-" }
+      - { name: acs_c_2_0, offset: 93, type: f32, unit: "-" }
+      - { name: acs_c_2_1, offset: 97, type: f32, unit: "-" }
+      - { name: acs_c_2_2, offset: 101, type: f32, unit: "-" }
+      - { name: acs_g,    offset: 105, type: f32, unit: "-" }
+
+      # W110~W118 Reserved (0xFF), treated as 9 bytes of data
+      - { name: reserved_w110, offset: 109, type: u32, unit: "-" }
+      - { name: reserved_w114, offset: 113, type: u32, unit: "-" }
+      - { name: reserved_w118, offset: 117, type: u8,  unit: "-" }

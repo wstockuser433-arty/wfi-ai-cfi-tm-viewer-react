@@ -32,6 +32,10 @@ set -euo pipefail
 # Format: "CARD_KEY|unit_sub_id|service|subservice|description"
 ALL_CARDS=(
   "CAMERA_UNIT_STATUS|16|104|1|Camera Unit Status Telemetry"
+  "CAMERA_MOTION_CALC|16|104|2|Image Motion Calculation Result"
+  "CAMERA_MOTION_COEFF|16|104|3|Image Motion Coefficient"
+  "CAMERA_TERRAIN_ELEV|16|104|4|Terrain Elevation Data"
+  "CTPU_TM|48|3|25|CTPU Telemetry"
 )
 
 declare -A CARD_SUBID=()
@@ -154,6 +158,30 @@ REALISTIC_RAW_VALUES = {
     "current_grating_scale": (75000, 85000),
     "img_mod1_fw_version": (20240101, 20250101),
     "img_mod2_fw_version": (20240101, 20250101),
+
+    # Camera motion-calc fields
+    "drift_angle": (0.0001, 0.0008),
+    "drift_angle_residual": (-0.0001, 0.0001),
+    "longitudinal_image_motion_velocity": (90, 110),
+    "transverse_image_motion_velocity": (5, 15),
+    "image_motion_velocity": (95, 115),
+    "geographic_longitude": (70.0, 80.0),
+    "geographic_latitude": (25.0, 35.0),
+    "terrain_elevation_1": (0, 500),
+    "terrain_elevation_2": (0, 500),
+    "terrain_elevation_3": (0, 500),
+    "terrain_elevation_4": (0, 500),
+    "expected_roll_angle": (-0.05, 0.05),
+    "expected_pitch_angle": (-0.05, 0.05),
+    "expected_yaw_angle": (-0.05, 0.05),
+    "expected_roll_angular_velocity": (-0.02, 0.02),
+    "expected_pitch_angular_velocity": (-0.02, 0.02),
+    "expected_yaw_angular_velocity": (-0.02, 0.02),
+
+    # Motion coeff
+    "acb_0_0": (-2.0, 2.0),
+    "acb_0_1": (-2.0, 2.0),
+    "acb_0_2": (-2.0, 2.0),
 }
 
 # Nominal enum states (unchanged from before)
@@ -305,6 +333,21 @@ def value(key, f, seq, elapsed):
         return v
 
     # 2. Realistic raw values (for fields with calc formulas)
+    if name.startswith("terrain_elevation_"):
+        h = zlib.crc32(name.encode())
+        lo, hi = 0, 500
+        mid = (lo + hi) / 2
+        period = 40 + h % 41
+        phase = ((h >> 8) % 360) * math.pi / 180.0
+        return int(mid + (hi - lo) / 2 * math.sin(2 * math.pi * seq / period + phase))
+    
+    if name.startswith("acb_") or name.startswith("acs_"):
+        h = zlib.crc32(name.encode())
+        mid, half = 0.0, 2.0
+        period = 40 + h % 41
+        phase = ((h >> 8) % 360) * math.pi / 180.0
+        return mid + half * math.sin(2 * math.pi * seq / period + phase)
+
     if name in REALISTIC_RAW_VALUES:
         lo, hi = REALISTIC_RAW_VALUES[name]
         mid = (lo + hi) / 2.0
@@ -425,7 +468,34 @@ def validate(cards, selected):
                     die("%s.%s=%r left its limits %r at seq %d" % (key, f["name"], dec[f["name"]], b, seq))
 
 cmd, path = sys.argv[1], sys.argv[2]
-cards = parse(path)
+cmd, path = sys.argv[1], sys.argv[2]
+
+# ─── Accept either a single yaml file OR a directory of yamls ───
+import glob, os
+
+def load_all_cards(path):
+    """Return { card_key: card_dict } merged across one file or a directory."""
+    if os.path.isdir(path):
+        files = sorted(glob.glob(os.path.join(path, "*.yaml")))
+        if not files:
+            die("no *.yaml files found in directory %s" % path)
+    else:
+        files = [path]
+
+    merged = {}
+    origins = {}      # card_key → yaml path that defines it
+    for f in files:
+        one = parse(f)
+        for key, c in one.items():
+            if key in merged:
+                die("card %s is defined in both %s and %s"
+                    % (key, origins[key], f))
+            merged[key] = c
+            origins[key] = f
+    return merged
+
+cards = load_all_cards(path)
+
 if cmd == "check":
     sel = []
     for t in sys.argv[3:]:
@@ -484,7 +554,7 @@ Usage: $0 -p <port> [options]
   -g  seconds between packets inside a round     (default $GAP)
   -d  source data as hex string                  (default $DATA)
   -f  file of payload hex strings, one per line
-  -y  TM dictionary yaml (ebox.yaml)
+  -y  TM dictionary yaml (ebox.yaml) or directory of *.yaml files
   -z  with -y: do not zero-pad the payload to 237 bytes
   -v  print each packet as hex
   -l  list the known cards and exit
@@ -542,7 +612,15 @@ PAYLOAD_LINES=()   # source line number of each payload (file mode only)
 if [[ -n "$YAML_FILE" ]]; then
   (( DATA_SET == 0 )) || { echo "Error: -y and -d cannot be used together" >&2; exit 1; }
   [[ -z "$PAYLOAD_FILE" ]] || { echo "Error: -y and -f cannot be used together" >&2; exit 1; }
-  [[ -r "$YAML_FILE" ]] || { echo "Error: cannot read yaml file '$YAML_FILE'" >&2; exit 1; }
+  [[ -e "$YAML_FILE" ]] || { echo "Error: yaml path '$YAML_FILE' does not exist" >&2; exit 1; }
+    if [[ -d "$YAML_FILE" ]]; then
+        shopt -s nullglob
+        _yaml_count=( "$YAML_FILE"/*.yaml )
+        shopt -u nullglob
+        (( ${#_yaml_count[@]} > 0 )) || { echo "Error: no *.yaml files in '$YAML_FILE'" >&2; exit 1; }
+    else
+        [[ -r "$YAML_FILE" ]] || { echo "Error: cannot read yaml file '$YAML_FILE'" >&2; exit 1; }
+    fi
   command -v python3 >/dev/null 2>&1 || { echo "Error: -y needs python3" >&2; exit 1; }
   # payloads are generated per card inside send_packet; one placeholder = one round
   PAYLOADS=("")

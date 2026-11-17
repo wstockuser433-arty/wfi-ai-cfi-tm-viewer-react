@@ -1,5 +1,51 @@
 cd /home/hassan/Documents/Hassan/scc-work/wfi-ai-cfi-tm-viewer-react-oem-packets/docs/eth-setup-rel
 
+new commands
+
+Via Serial 
+
+Terminal 1 (Camera)
+./send_ebox_serial.sh \
+  -p /tmp/ttyV0 \
+  -y ../../backend/app/tm_dictionary/camera_status.yaml \
+  -c CAMERA_UNIT_STATUS,CAMERA_MOTION_CALC,CAMERA_MOTION_COEFF,CAMERA_TERRAIN_ELEV \
+  -n 0 \
+  -i 1 \
+  -v
+
+Terminal 2 (CTPU)
+./send_ebox_serial.sh \
+  -p /tmp/ttyV0 \
+  -y ../../backend/app/tm_dictionary/ctpu.yaml \
+  -c CTPU_TM \
+  -n 0 \
+  -i 1 \
+  -v
+
+
+Via Ethernet
+
+Terminal 1 (Camera)
+./send_ebox_tm-limits-wali.sh \
+  -H 127.0.0.1 \
+  -p 9200 \
+  -y ../../backend/app/tm_dictionary/camera_status.yaml \
+  -c CAMERA_UNIT_STATUS,CAMERA_MOTION_CALC,CAMERA_MOTION_COEFF,CAMERA_TERRAIN_ELEV \
+  -n 0 \
+  -i 1 \
+  -v
+
+Terminal 2 (CTPU)
+./send_ebox_tm-limits-wali.sh \
+  -H 127.0.0.1 \
+  -p 9200 \
+  -y ../../backend/app/tm_dictionary/ctpu.yaml \
+  -c CTPU_TM \
+  -n 0 \
+  -i 1 \
+  -v
+
+
 chmod +x send_ebox_tm.sh
 
 # one pass through the file, local

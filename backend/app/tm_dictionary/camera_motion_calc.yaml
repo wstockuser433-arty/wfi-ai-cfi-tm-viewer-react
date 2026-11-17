@@ -1,0 +1,62 @@
+# ============================================================
+# Camera Unit — Image Motion Calculation Result Telemetry
+# ICD §5.4 Table 1
+# Unit ID: 0x1A | Sub-ID: 0x10 | Service: 0x68 | Sub-service: 0x02
+# Total payload: 238 bytes (zero-padded at the end)
+# ============================================================
+
+unit:
+  id: 0x1A
+  label: "CAMERA"
+
+cards:
+
+  CAMERA_MOTION_CALC:
+    label: "Image Motion Calculation Result Telemetry"
+    unit_id: 0x1A
+    unit_sub_id: 0x10
+    service: 0x68
+    subservice: 0x02
+    subsystem: CAMERA
+    hw_class: HW
+    fields:
+      # W1: operating mode (byte 16 in the wire frame = offset 0 in payload)
+      - { name: payload_operating_mode, offset: 0, type: u8, unit: "-" }
+
+      # W2~W5: drift angle (f32, rad)
+      - { name: drift_angle, offset: 1, type: f32, unit: "rad" }
+      # W6~W9: drift angle residual
+      - { name: drift_angle_residual, offset: 5, type: f32, unit: "rad" }
+      # W10~W13: longitudinal image motion velocity
+      - { name: longitudinal_image_motion_velocity, offset: 9, type: f32, unit: "mm/s" }
+      # W14~W17: transverse image motion velocity
+      - { name: transverse_image_motion_velocity, offset: 13, type: f32, unit: "mm/s" }
+      # W18~W21: image motion velocity
+      - { name: image_motion_velocity, offset: 17, type: f32, unit: "mm/s" }
+      # W22~W25: geographic longitude of imaging point
+      - { name: geographic_longitude, offset: 21, type: f32, unit: "deg" }
+      # W26~W29: geographic latitude of imaging point
+      - { name: geographic_latitude, offset: 25, type: f32, unit: "deg" }
+
+      # W30~W31 through W36~W37: terrain elevations 1..4 (s16, m)
+      - { name: terrain_elevation_1, offset: 29, type: i16, unit: "m" }
+      - { name: terrain_elevation_2, offset: 31, type: i16, unit: "m" }
+      - { name: terrain_elevation_3, offset: 33, type: i16, unit: "m" }
+      - { name: terrain_elevation_4, offset: 35, type: i16, unit: "m" }
+
+      # W38~W41: expected roll angle
+      - { name: expected_roll_angle, offset: 37, type: f32, unit: "rad" }
+      # W42~W45: expected pitch angle
+      - { name: expected_pitch_angle, offset: 41, type: f32, unit: "rad" }
+      # W46~W49: expected yaw angle
+      - { name: expected_yaw_angle, offset: 45, type: f32, unit: "rad" }
+      # W50~W53: expected roll angular velocity, limits -0.05..0.05
+      - { name: expected_roll_angular_velocity, offset: 49, type: f32, unit: "rad/s", ltl: -0.05, htl: 0.05 }
+      # W54~W57: expected pitch angular velocity
+      - { name: expected_pitch_angular_velocity, offset: 53, type: f32, unit: "rad/s", ltl: -0.05, htl: 0.05 }
+      # W58~W61: expected yaw angular velocity
+      - { name: expected_yaw_angular_velocity, offset: 57, type: f32, unit: "rad/s", ltl: -0.05, htl: 0.05 }
+
+      # W62~W69: reserved (fill 0x55)
+      - { name: reserved_62, offset: 61, type: u32, unit: "-" }
+      - { name: reserved_66, offset: 65, type: u32, unit: "-" }

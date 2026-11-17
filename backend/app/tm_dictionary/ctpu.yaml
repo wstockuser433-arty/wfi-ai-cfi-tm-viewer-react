@@ -1,0 +1,131 @@
+# ============================================================
+# CTPU Telemetry
+# ============================================================
+unit:
+  id: 0x3A
+  label: "CTPU"
+
+cards:
+  CTPU_TM:
+    label: "CTPU Telemetry"
+    unit_id: 0x3A
+    unit_sub_id: 0x30
+    service: 0x03
+    subservice: 0x19
+    subsystem: CTPU
+    hw_class: HW
+    fields:
+      # 1
+      - { name: tm_packet_id, offset: 0, type: u8, unit: "-" }
+      # 2
+      - { name: interface_card_32bit_counter, offset: 1, type: u32, unit: "-" }
+      # 3-14
+      - { name: hw_tm1,  offset: 5,  type: u16, unit: "-" }
+      - { name: hw_tm2,  offset: 7,  type: u16, unit: "-" }
+      - { name: hw_tm3,  offset: 9,  type: u16, unit: "-" }
+      - { name: hw_tm4,  offset: 11, type: u16, unit: "-" }
+      - { name: hw_tm5,  offset: 13, type: u16, unit: "-" }
+      - { name: hw_tm6,  offset: 15, type: u16, unit: "-" }
+      - { name: hw_tm7,  offset: 17, type: u16, unit: "-" }
+      - { name: hw_tm8,  offset: 19, type: u16, unit: "-" }
+      - { name: hw_tm9,  offset: 21, type: u16, unit: "-" }
+      - { name: hw_tm10, offset: 23, type: u16, unit: "-" }
+      - { name: hw_tm11, offset: 25, type: u16, unit: "-" }
+      - { name: hw_tm12, offset: 27, type: u16, unit: "-" }
+      # 15
+      - { name: can_active_bus, offset: 29, type: u8, unit: "-" }
+      # 16-25
+      - { name: can_rx_poll_count, offset: 30, type: u16, unit: "cnt" }
+      - { name: can_tx_tm_pkt_total_count, offset: 32, type: u16, unit: "cnt" }
+      - { name: can_rx_data_block_count, offset: 34, type: u16, unit: "cnt" }
+      - { name: can_tx_data_block_ack_count, offset: 36, type: u16, unit: "cnt" }
+      - { name: can_rx_tc_count, offset: 38, type: u16, unit: "cnt" }
+      - { name: can_tx_tc_ack_count, offset: 40, type: u16, unit: "cnt" }
+      - { name: can_tx_tm_count_interface_card, offset: 42, type: u16, unit: "cnt" }
+      - { name: can_tx_tm_count_cdpm_p, offset: 44, type: u16, unit: "cnt" }
+      - { name: can_tx_tm_count_cdpm_r_ai, offset: 46, type: u16, unit: "cnt" }
+      - { name: can_tx_tm_count_cdpm_r_fpga, offset: 48, type: u16, unit: "cnt" }
+      # 26-32
+      - { name: tm_acq_send_time_sec_interface_card, offset: 50, type: u16, unit: "s" }
+      - { name: tm_acq_send_time_sec_cdpm_p_tm1, offset: 52, type: u16, unit: "s" }
+      - { name: tm_acq_send_time_sec_cdpm_p_tm2, offset: 54, type: u16, unit: "s" }
+      - { name: tm_acq_send_time_sec_cdpm_p_tm3, offset: 56, type: u16, unit: "s" }
+      - { name: tm_acq_send_time_sec_cdpm_r_ai_tm1, offset: 58, type: u16, unit: "s" }
+      - { name: tm_acq_send_time_sec_cdpm_r_ai_tm2, offset: 60, type: u16, unit: "s" }
+      - { name: tm_acq_send_time_sec_cdpm_r_fpga, offset: 62, type: u16, unit: "s" }
+      # 33-36
+      - { name: ebox_uart1_status, offset: 64, type: u8, unit: "-" }
+      - { name: ebox_uart2_status, offset: 65, type: u8, unit: "-" }
+      - { name: ebox_uart3_status, offset: 66, type: u8, unit: "-" }
+      - { name: ebox_uart4_status, offset: 67, type: u8, unit: "-" }
+      # 37-45 (UART1)
+      - { name: ebox_uart1_tx_poll_count, offset: 68, type: u16, unit: "cnt" }
+      - { name: ebox_uart1_rx_tm_pkt_count, offset: 70, type: u16, unit: "cnt" }
+      - { name: ebox_uart1_rx_tm_pkt_timeout_count, offset: 72, type: u16, unit: "cnt" }
+      - { name: ebox_uart1_tx_tc_count, offset: 74, type: u16, unit: "cnt" }
+      - { name: ebox_uart1_rx_tc_ack_count, offset: 76, type: u16, unit: "cnt" }
+      - { name: ebox_uart1_rx_tc_ack_timeout_count, offset: 78, type: u16, unit: "cnt" }
+      - { name: ebox_uart1_tx_data_block_count, offset: 80, type: u16, unit: "cnt" }
+      - { name: ebox_uart1_rx_data_block_ack_count, offset: 82, type: u16, unit: "cnt" }
+      - { name: ebox_uart1_rx_data_block_ack_timeout_count, offset: 84, type: u16, unit: "cnt" }
+      # 46-54 (UART2)
+      - { name: ebox_uart2_tx_poll_count, offset: 86, type: u16, unit: "cnt" }
+      - { name: ebox_uart2_rx_tm_pkt_count, offset: 88, type: u16, unit: "cnt" }
+      - { name: ebox_uart2_rx_tm_pkt_timeout_count, offset: 90, type: u16, unit: "cnt" }
+      - { name: ebox_uart2_tx_tc_count, offset: 92, type: u16, unit: "cnt" }
+      - { name: ebox_uart2_rx_tc_ack_count, offset: 94, type: u16, unit: "cnt" }
+      - { name: ebox_uart2_rx_tc_ack_timeout_count, offset: 96, type: u16, unit: "cnt" }
+      - { name: ebox_uart2_tx_data_block_count, offset: 98, type: u16, unit: "cnt" }
+      - { name: ebox_uart2_rx_data_block_ack_count, offset: 100, type: u16, unit: "cnt" }
+      - { name: ebox_uart2_rx_data_block_ack_timeout_count, offset: 102, type: u16, unit: "cnt" }
+      # 55-63 (UART3)
+      - { name: ebox_uart3_tx_poll_count, offset: 104, type: u16, unit: "cnt" }
+      - { name: ebox_uart3_rx_tm_pkt_count, offset: 106, type: u16, unit: "cnt" }
+      - { name: ebox_uart3_rx_tm_pkt_timeout_count, offset: 108, type: u16, unit: "cnt" }
+      - { name: ebox_uart3_tx_tc_count, offset: 110, type: u16, unit: "cnt" }
+      - { name: ebox_uart3_rx_tc_ack_count, offset: 112, type: u16, unit: "cnt" }
+      - { name: ebox_uart3_rx_tc_ack_timeout_count, offset: 114, type: u16, unit: "cnt" }
+      - { name: ebox_uart3_tx_data_block_count, offset: 116, type: u16, unit: "cnt" }
+      - { name: ebox_uart3_rx_data_block_ack_count, offset: 118, type: u16, unit: "cnt" }
+      - { name: ebox_uart3_rx_data_block_ack_timeout_count, offset: 120, type: u16, unit: "cnt" }
+      # 64-72 (UART4)
+      - { name: ebox_uart4_tx_poll_count, offset: 122, type: u16, unit: "cnt" }
+      - { name: ebox_uart4_rx_tm_pkt_count, offset: 124, type: u16, unit: "cnt" }
+      - { name: ebox_uart4_rx_tm_pkt_timeout_count, offset: 126, type: u16, unit: "cnt" }
+      - { name: ebox_uart4_tx_tc_count, offset: 128, type: u16, unit: "cnt" }
+      - { name: ebox_uart4_rx_tc_ack_count, offset: 130, type: u16, unit: "cnt" }
+      - { name: ebox_uart4_rx_tc_ack_timeout_count, offset: 132, type: u16, unit: "cnt" }
+      - { name: ebox_uart4_tx_data_block_count, offset: 134, type: u16, unit: "cnt" }
+      - { name: ebox_uart4_rx_data_block_ack_count, offset: 136, type: u16, unit: "cnt" }
+      - { name: ebox_uart4_rx_data_block_ack_timeout_count, offset: 138, type: u16, unit: "cnt" }
+      # 73-81 (CDPM_R AI)
+      - { name: cdpm_r_ai_uart_tx_poll_count, offset: 140, type: u16, unit: "cnt" }
+      - { name: cdpm_r_ai_uart_rx_tm_pkt_count, offset: 142, type: u16, unit: "cnt" }
+      - { name: cdpm_r_ai_uart_rx_tm_pkt_timeout_count, offset: 144, type: u16, unit: "cnt" }
+      - { name: cdpm_r_ai_uart_tx_tc_count, offset: 146, type: u16, unit: "cnt" }
+      - { name: cdpm_r_ai_uart_rx_tc_ack_count, offset: 148, type: u16, unit: "cnt" }
+      - { name: cdpm_r_ai_uart_rx_tc_ack_timeout_count, offset: 150, type: u16, unit: "cnt" }
+      - { name: cdpm_r_ai_uart_tx_data_block_count, offset: 152, type: u16, unit: "cnt" }
+      - { name: cdpm_r_ai_uart_rx_data_block_ack_count, offset: 154, type: u16, unit: "cnt" }
+      - { name: cdpm_r_ai_uart_rx_data_block_ack_timeout_count, offset: 156, type: u16, unit: "cnt" }
+      # 82-90 (CDPM_R FPGA)
+      - { name: cdpm_r_fpga_uart_tx_poll_count, offset: 158, type: u16, unit: "cnt" }
+      - { name: cdpm_r_fpga_rx_tm_pkt_count, offset: 160, type: u16, unit: "cnt" }
+      - { name: cdpm_r_fpga_rx_tm_pkt_timeout_count, offset: 162, type: u16, unit: "cnt" }
+      - { name: cdpm_r_fpga_tx_tc_count, offset: 164, type: u16, unit: "cnt" }
+      - { name: cdpm_r_fpga_rx_tc_ack_count, offset: 166, type: u16, unit: "cnt" }
+      - { name: cdpm_r_fpga_rx_tc_ack_timeout_count, offset: 168, type: u16, unit: "cnt" }
+      - { name: cdpm_r_fpga_tx_data_block_count, offset: 170, type: u16, unit: "cnt" }
+      - { name: cdpm_r_fpga_rx_data_block_ack_count, offset: 172, type: u16, unit: "cnt" }
+      - { name: cdpm_r_fpga_rx_data_block_ack_timeout_count, offset: 174, type: u16, unit: "cnt" }
+      # 91-100
+      - { name: tc_execution_success_count, offset: 176, type: u16, unit: "cnt" }
+      - { name: tc_execution_fail_count, offset: 178, type: u16, unit: "cnt" }
+      - { name: last_tc_executed_command_code, offset: 180, type: u16, unit: "-" }
+      - { name: last_tc_failed_command_code, offset: 182, type: u16, unit: "-" }
+      - { name: last_tc_failed_command_reason, offset: 184, type: u16, unit: "-" }
+      - { name: file_upload_pkts_rx_from_ground, offset: 186, type: u16, unit: "cnt" }
+      - { name: file_upload_pkts_tx_to_cdpm_p, offset: 188, type: u16, unit: "cnt" }
+      - { name: file_upload_ack_rx_from_cdpm_p, offset: 190, type: u16, unit: "cnt" }
+      - { name: file_upload_pkts_tx_to_cdpm_r, offset: 192, type: u16, unit: "cnt" }
+      - { name: file_upload_ack_rx_from_cdpm_r, offset: 194, type: u16, unit: "cnt" }
