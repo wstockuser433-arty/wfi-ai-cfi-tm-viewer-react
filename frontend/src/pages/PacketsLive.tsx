@@ -24,7 +24,11 @@ export default function PacketsLive() {
   }, [packets, selected]);
 
   function openInspect(p: PacketLike) {
-    const id = p.id ?? `${p.timestamp ?? 0}`;
+    // Use the same composite key format as bookmarks: ts-apid-seq
+    // so StandalonePacketView can resolve via /api/packets/by-key
+    const id = p.id != null
+      ? String(p.id)                                       // DB packets → integer id
+      : `${p.timestamp ?? 0}-${p.apid}-${p.seq ?? 0}`;     // Live packets → composite key
     window.open(`/standalone/packet/${id}`, "_blank", "width=1200,height=900");
   }
 

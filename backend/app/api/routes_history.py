@@ -62,14 +62,20 @@ async def history(
                 "seq": r.seq,
                 "raw_hex": r.raw_hex,
                 "payload_hex": r.payload_hex,
-                # ⭐ Map the ParameterRows to DecodedField objects
+                # ⭐ ADD THESE EXPLICITLY:
+                "unit_id": r.unit_id,
+                "unit_sub_id": r.unit_sub_id,
+                "service_type": r.service_type,
+                "service_subtype": r.service_subtype,
+                "sub_hdr_value": r.sub_hdr_value,
+                "sub_hdr_label": r.sub_hdr_label,
                 "fields": {
                     p.name: {
                         "value": p.value_num if p.value_num is not None else p.raw_json,
                         "unit": p.unit or "",
                         "status": p.status or "OK",
-                        "limits": [None, None],  # DB doesn't store limits
-                        "enum": None,            # DB doesn't store enum labels
+                        "limits": [None, None],
+                        "enum": None,
                     }
                     for p in r.parameters
                 }

@@ -1,0 +1,30 @@
+unit:
+  id: 0x2A
+  label: "CDPM_R_AI"
+
+cards:
+  CDPM_R_AI_DCDS:
+    label: "CDPM_R (AI) DCDS Report"
+    unit_id: 0x2A
+    unit_sub_id: 0x02
+    service: 0x82
+    subservice: 0x0B
+    subsystem: CDPM_R
+    hw_class: SW
+    fields:
+      - { name: pid,           offset: 0, length: 1, type: u8,  unit: "-" }
+      - { name: layout_tag,    offset: 1, length: 1, type: u8,  unit: "-" }
+      - { name: param_count,   offset: 2, length: 1, type: u8,  unit: cnt }
+      - { name: reserved,      offset: 3, length: 1, type: u8,  unit: "-" }
+
+      # ─── Param entry 0 (variable value_len) ─────────────────────
+      - { name: p0_param_id,   offset: 4, length: 2, type: u16, unit: "-" }
+      - { name: p0_value_len,  offset: 6, length: 1, type: u8,  unit: B }
+      # Values are typed per param_id; the safe universal view is a raw hex
+      # slice. Add typed fields if you know the layout is fixed:
+      - { name: p0_value_u32,  offset: 7, length: 4, type: u32, unit: "-" }
+
+      # ─── Param entry 1 ────────────────────────────────────────
+      - { name: p1_param_id,   offset: 11, length: 2, type: u16, unit: "-" }
+      - { name: p1_value_len,  offset: 13, length: 1, type: u8,  unit: B }
+      - { name: p1_value_u32,  offset: 14, length: 4, type: u32, unit: "-" }

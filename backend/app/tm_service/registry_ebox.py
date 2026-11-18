@@ -29,11 +29,14 @@ log = logging.getLogger(__name__)
 
 DICT_DIR = Path(__file__).parent.parent / "tm_dictionary"
 
-VALID_TYPES = {"f32", "f64", "u8", "u16", "u32", "u24", "i8", "i16", "i32"}
+VALID_TYPES = {"f32", "f64", "u8", "u16", "u24", "u32", "u64",
+               "i8", "i16", "i32", "i64",
+               "s8", "s16", "s32", "s64"}
 STRUCT_SIZE = {
     "f32": 4, "f64": 8,
-    "u8": 1, "u16": 2, "u32": 4, "u24": 3,
-    "i8": 1, "i16": 2, "i32": 4,
+    "u8": 1, "u16": 2, "u24": 3, "u32": 4, "u64": 8,
+    "i8": 1, "i16": 2, "i32": 4, "i64": 8,
+     "s8": 1, "s16": 2, "s32": 4, "s64": 8,
 }
 
 # Calc expressions are validated against this whitelist. Anything not

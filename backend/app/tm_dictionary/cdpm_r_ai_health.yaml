@@ -1,0 +1,84 @@
+unit:
+  id: 0x2A
+  label: "CDPM_R_AI"
+
+cards:
+  CDPM_R_AI_HEALTH:
+    label: "CDPM_R (AI) Health TM"
+    unit_id: 0x2A
+    unit_sub_id: 0x02
+    service: 0x03
+    subservice: 0x19
+    subsystem: CDPM_R
+    hw_class: SW
+    fields:
+      - { name: o2_fpga_rx_count,           offset: 0,  length: 4, type: u32, unit: cnt }
+      - { name: o2_health_req_rx_count,     offset: 4,  length: 4, type: u32, unit: cnt }
+      - { name: o2_health_rep_tx_count,     offset: 8,  length: 4, type: u32, unit: cnt }
+      - { name: o2_obj_req_rx_count,        offset: 12, length: 4, type: u32, unit: cnt }
+      - { name: o2_obj_rep_tx_count,        offset: 16, length: 4, type: u32, unit: cnt }
+      - { name: o2_total_tc_rx,             offset: 20, length: 4, type: u32, unit: cnt }
+      - { name: o2_total_tm_tx,             offset: 24, length: 4, type: u32, unit: cnt }
+      - { name: o2_last_fail_cmd_id,        offset: 28, length: 1, type: u8,  unit: "-" }
+      - { name: o2_last_fail_reason,        offset: 29, length: 1, type: u8,  unit: "-" }
+      - { name: o2_unsuccessful_cmd_count,  offset: 30, length: 2, type: u16, unit: cnt }
+      - { name: reserved_1,                 offset: 32, length: 4, type: u32, unit: "-" }
+      - { name: o2_num_models,              offset: 36, length: 1, type: u8,  unit: "-" }
+      - name: o2_prev_model_type
+        offset: 37
+        length: 1
+        type: u8
+        unit: "-"
+        enum: { 0: golden, 1: trained, 2: uploaded }
+      - { name: o2_prev_model_id,           offset: 38, length: 1, type: u8,  unit: "-" }
+      - { name: o2_prev_model_date,         offset: 39, length: 4, type: u32, unit: YYYYMMDD }
+      - name: o2_curr_model_type
+        offset: 43
+        length: 1
+        type: u8
+        unit: "-"
+        enum: { 0: golden, 1: trained, 2: uploaded }
+      - { name: o2_curr_model_id,           offset: 44, length: 1, type: u8,  unit: "-" }
+      - { name: o2_curr_model_date,         offset: 45, length: 4, type: u32, unit: YYYYMMDD }
+      - { name: o2_last_upl_model_id,       offset: 49, length: 1, type: u8,  unit: "-" }
+      - { name: o2_last_upl_status,         offset: 50, length: 1, type: u8,  unit: "-" }
+      - { name: o2_last_upl_time,           offset: 51, length: 8, type: u64, unit: "-" }
+      - { name: o2_last_upl_frame_seq,      offset: 59, length: 2, type: u16, unit: "-" }
+      - { name: o2_last_upl_ok_frames,      offset: 61, length: 4, type: u32, unit: cnt }
+      - { name: o2_last_upl_bad_frames,     offset: 65, length: 4, type: u32, unit: cnt }
+      - { name: reserved_2,                 offset: 69, length: 4, type: u32, unit: "-" }
+      - name: o2_board_mode
+        offset: 73
+        length: 1
+        type: u8
+        unit: "-"
+        enum: { 1: train, 2: test }
+      - { name: o2_training_status,         offset: 74, length: 1, type: u8,  unit: "-" }
+      - { name: o2_last_trained_model_id,   offset: 75, length: 1, type: u8,  unit: "-" }
+      - { name: o2_last_trained_map,        offset: 76, length: 1, type: u8,  unit: "%" }
+      - { name: reserved_3,                 offset: 77, length: 4, type: u32, unit: "-" }
+      - { name: o2_num_images_onboard,      offset: 81, length: 2, type: u16, unit: cnt }
+      - { name: o2_nvme_used,               offset: 83, length: 1, type: u8,  unit: "%" }
+      - { name: o2_cpu_temp_int,            offset: 84, length: 1, type: u8,  unit: "°C" }
+      - { name: o2_cpu_temp_frac,           offset: 85, length: 1, type: u8,  unit: "-" }
+      - { name: o2_cpu_util_int,            offset: 86, length: 1, type: u8,  unit: "%" }
+      - { name: o2_cpu_util_frac,           offset: 87, length: 1, type: u8,  unit: "-" }
+      - { name: reserved_4,                 offset: 88, length: 4, type: u32, unit: "-" }
+      - { name: reserved_5,                 offset: 92, length: 4, type: u32, unit: "-" }
+      - { name: ota_total_packets,          offset: 96,  length: 2, type: u16, unit: cnt }
+      - { name: ota_received_count,         offset: 98,  length: 2, type: u16, unit: cnt }
+      - { name: ota_last_contiguous,        offset: 100, length: 2, type: u16, unit: "-" }
+      - { name: ota_max_gseq_seen,          offset: 102, length: 2, type: u16, unit: "-" }
+      - { name: ota_missing_count,          offset: 104, length: 2, type: u16, unit: cnt }
+      - name: ota_checksum_ok
+        offset: 106
+        length: 1
+        type: u8
+        unit: "-"
+        enum: { 0: unknown, 1: ok, 2: fail }
+      - name: ota_rebuild_ok
+        offset: 107
+        length: 1
+        type: u8
+        unit: "-"
+        enum: { 0: unknown, 1: ok, 2: fail }

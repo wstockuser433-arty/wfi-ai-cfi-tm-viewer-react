@@ -1,0 +1,234 @@
+unit:
+  id: 0x2A
+  label: "CDPM_R_AI"
+
+cards:
+  CDPM_R_AI_OBJECT:
+    label: "CDPM_R (AI) Object TM"
+    unit_id: 0x2A
+    unit_sub_id: 0x02
+    service: 0x82
+    subservice: 0x01
+    subsystem: CDPM_R
+    hw_class: SW
+    fields:
+      # ─── Header ────────────────────────────────────────────────
+      - { name: pid,              offset: 0, length: 1, type: u8,  unit: "-" }
+      - { name: frame_num,        offset: 1, length: 2, type: u16, unit: "-" }
+      - { name: slice_count,      offset: 3, length: 1, type: u8,  unit: "-" }
+      - { name: pkt_idx,          offset: 4, length: 1, type: u8,  unit: "-" }
+      - { name: pkt_count,        offset: 5, length: 1, type: u8,  unit: "-" }
+      - name: layout_tag
+        offset: 6
+        length: 1
+        type: u8
+        unit: "-"
+        enum: { 0: lat_lon, 1: dota_coords }
+      - { name: detection_count,  offset: 7, length: 2, type: u16, unit: cnt }
+
+      # ─── Detection 0 (offset 9) ────────────────────────────────
+      - { name: det0_obj_id,    offset: 9,  length: 1, type: u8,  unit: "-" }
+      - { name: det0_conf,      offset: 10, length: 1, type: u8,  unit: "%" }
+      - { name: det0_slice_idx, offset: 11, length: 1, type: u8,  unit: "-" }
+      - { name: det0_lat_int,   offset: 12, length: 1, type: s8,  unit: deg }
+      - { name: det0_lat_frac,  offset: 13, length: 2, type: u16, unit: "-" }
+      - { name: det0_lon_int,   offset: 15, length: 1, type: s8,  unit: deg }
+      - { name: det0_lon_frac,  offset: 16, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 1 (offset 18) ───────────────────────────────
+      - { name: det1_obj_id,    offset: 18, length: 1, type: u8,  unit: "-" }
+      - { name: det1_conf,      offset: 19, length: 1, type: u8,  unit: "%" }
+      - { name: det1_slice_idx, offset: 20, length: 1, type: u8,  unit: "-" }
+      - { name: det1_lat_int,   offset: 21, length: 1, type: s8,  unit: deg }
+      - { name: det1_lat_frac,  offset: 22, length: 2, type: u16, unit: "-" }
+      - { name: det1_lon_int,   offset: 24, length: 1, type: s8,  unit: deg }
+      - { name: det1_lon_frac,  offset: 25, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 2 (offset 27) ───────────────────────────────
+      - { name: det2_obj_id,    offset: 27, length: 1, type: u8,  unit: "-" }
+      - { name: det2_conf,      offset: 28, length: 1, type: u8,  unit: "%" }
+      - { name: det2_slice_idx, offset: 29, length: 1, type: u8,  unit: "-" }
+      - { name: det2_lat_int,   offset: 30, length: 1, type: s8,  unit: deg }
+      - { name: det2_lat_frac,  offset: 31, length: 2, type: u16, unit: "-" }
+      - { name: det2_lon_int,   offset: 33, length: 1, type: s8,  unit: deg }
+      - { name: det2_lon_frac,  offset: 34, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 3 (offset 36) ───────────────────────────────
+      - { name: det3_obj_id,    offset: 36, length: 1, type: u8,  unit: "-" }
+      - { name: det3_conf,      offset: 37, length: 1, type: u8,  unit: "%" }
+      - { name: det3_slice_idx, offset: 38, length: 1, type: u8,  unit: "-" }
+      - { name: det3_lat_int,   offset: 39, length: 1, type: s8,  unit: deg }
+      - { name: det3_lat_frac,  offset: 40, length: 2, type: u16, unit: "-" }
+      - { name: det3_lon_int,   offset: 42, length: 1, type: s8,  unit: deg }
+      - { name: det3_lon_frac,  offset: 43, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 4 (offset 45) ───────────────────────────────
+      - { name: det4_obj_id,    offset: 45, length: 1, type: u8,  unit: "-" }
+      - { name: det4_conf,      offset: 46, length: 1, type: u8,  unit: "%" }
+      - { name: det4_slice_idx, offset: 47, length: 1, type: u8,  unit: "-" }
+      - { name: det4_lat_int,   offset: 48, length: 1, type: s8,  unit: deg }
+      - { name: det4_lat_frac,  offset: 49, length: 2, type: u16, unit: "-" }
+      - { name: det4_lon_int,   offset: 51, length: 1, type: s8,  unit: deg }
+      - { name: det4_lon_frac,  offset: 52, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 5 (offset 54) ───────────────────────────────
+      - { name: det5_obj_id,    offset: 54, length: 1, type: u8,  unit: "-" }
+      - { name: det5_conf,      offset: 55, length: 1, type: u8,  unit: "%" }
+      - { name: det5_slice_idx, offset: 56, length: 1, type: u8,  unit: "-" }
+      - { name: det5_lat_int,   offset: 57, length: 1, type: s8,  unit: deg }
+      - { name: det5_lat_frac,  offset: 58, length: 2, type: u16, unit: "-" }
+      - { name: det5_lon_int,   offset: 60, length: 1, type: s8,  unit: deg }
+      - { name: det5_lon_frac,  offset: 61, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 6 (offset 63) ───────────────────────────────
+      - { name: det6_obj_id,    offset: 63, length: 1, type: u8,  unit: "-" }
+      - { name: det6_conf,      offset: 64, length: 1, type: u8,  unit: "%" }
+      - { name: det6_slice_idx, offset: 65, length: 1, type: u8,  unit: "-" }
+      - { name: det6_lat_int,   offset: 66, length: 1, type: s8,  unit: deg }
+      - { name: det6_lat_frac,  offset: 67, length: 2, type: u16, unit: "-" }
+      - { name: det6_lon_int,   offset: 69, length: 1, type: s8,  unit: deg }
+      - { name: det6_lon_frac,  offset: 70, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 7 (offset 72) ───────────────────────────────
+      - { name: det7_obj_id,    offset: 72, length: 1, type: u8,  unit: "-" }
+      - { name: det7_conf,      offset: 73, length: 1, type: u8,  unit: "%" }
+      - { name: det7_slice_idx, offset: 74, length: 1, type: u8,  unit: "-" }
+      - { name: det7_lat_int,   offset: 75, length: 1, type: s8,  unit: deg }
+      - { name: det7_lat_frac,  offset: 76, length: 2, type: u16, unit: "-" }
+      - { name: det7_lon_int,   offset: 78, length: 1, type: s8,  unit: deg }
+      - { name: det7_lon_frac,  offset: 79, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 8 (offset 81) ───────────────────────────────
+      - { name: det8_obj_id,    offset: 81, length: 1, type: u8,  unit: "-" }
+      - { name: det8_conf,      offset: 82, length: 1, type: u8,  unit: "%" }
+      - { name: det8_slice_idx, offset: 83, length: 1, type: u8,  unit: "-" }
+      - { name: det8_lat_int,   offset: 84, length: 1, type: s8,  unit: deg }
+      - { name: det8_lat_frac,  offset: 85, length: 2, type: u16, unit: "-" }
+      - { name: det8_lon_int,   offset: 87, length: 1, type: s8,  unit: deg }
+      - { name: det8_lon_frac,  offset: 88, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 9 (offset 90) ───────────────────────────────
+      - { name: det9_obj_id,    offset: 90, length: 1, type: u8,  unit: "-" }
+      - { name: det9_conf,      offset: 91, length: 1, type: u8,  unit: "%" }
+      - { name: det9_slice_idx, offset: 92, length: 1, type: u8,  unit: "-" }
+      - { name: det9_lat_int,   offset: 93, length: 1, type: s8,  unit: deg }
+      - { name: det9_lat_frac,  offset: 94, length: 2, type: u16, unit: "-" }
+      - { name: det9_lon_int,   offset: 96, length: 1, type: s8,  unit: deg }
+      - { name: det9_lon_frac,  offset: 97, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 10 (offset 99) ──────────────────────────────
+      - { name: det10_obj_id,    offset: 99,  length: 1, type: u8,  unit: "-" }
+      - { name: det10_conf,      offset: 100, length: 1, type: u8,  unit: "%" }
+      - { name: det10_slice_idx, offset: 101, length: 1, type: u8,  unit: "-" }
+      - { name: det10_lat_int,   offset: 102, length: 1, type: s8,  unit: deg }
+      - { name: det10_lat_frac,  offset: 103, length: 2, type: u16, unit: "-" }
+      - { name: det10_lon_int,   offset: 105, length: 1, type: s8,  unit: deg }
+      - { name: det10_lon_frac,  offset: 106, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 11 (offset 108) ─────────────────────────────
+      - { name: det11_obj_id,    offset: 108, length: 1, type: u8,  unit: "-" }
+      - { name: det11_conf,      offset: 109, length: 1, type: u8,  unit: "%" }
+      - { name: det11_slice_idx, offset: 110, length: 1, type: u8,  unit: "-" }
+      - { name: det11_lat_int,   offset: 111, length: 1, type: s8,  unit: deg }
+      - { name: det11_lat_frac,  offset: 112, length: 2, type: u16, unit: "-" }
+      - { name: det11_lon_int,   offset: 114, length: 1, type: s8,  unit: deg }
+      - { name: det11_lon_frac,  offset: 115, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 12 (offset 117) ─────────────────────────────
+      - { name: det12_obj_id,    offset: 117, length: 1, type: u8,  unit: "-" }
+      - { name: det12_conf,      offset: 118, length: 1, type: u8,  unit: "%" }
+      - { name: det12_slice_idx, offset: 119, length: 1, type: u8,  unit: "-" }
+      - { name: det12_lat_int,   offset: 120, length: 1, type: s8,  unit: deg }
+      - { name: det12_lat_frac,  offset: 121, length: 2, type: u16, unit: "-" }
+      - { name: det12_lon_int,   offset: 123, length: 1, type: s8,  unit: deg }
+      - { name: det12_lon_frac,  offset: 124, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 13 (offset 126) ─────────────────────────────
+      - { name: det13_obj_id,    offset: 126, length: 1, type: u8,  unit: "-" }
+      - { name: det13_conf,      offset: 127, length: 1, type: u8,  unit: "%" }
+      - { name: det13_slice_idx, offset: 128, length: 1, type: u8,  unit: "-" }
+      - { name: det13_lat_int,   offset: 129, length: 1, type: s8,  unit: deg }
+      - { name: det13_lat_frac,  offset: 130, length: 2, type: u16, unit: "-" }
+      - { name: det13_lon_int,   offset: 132, length: 1, type: s8,  unit: deg }
+      - { name: det13_lon_frac,  offset: 133, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 14 (offset 135) ─────────────────────────────
+      - { name: det14_obj_id,    offset: 135, length: 1, type: u8,  unit: "-" }
+      - { name: det14_conf,      offset: 136, length: 1, type: u8,  unit: "%" }
+      - { name: det14_slice_idx, offset: 137, length: 1, type: u8,  unit: "-" }
+      - { name: det14_lat_int,   offset: 138, length: 1, type: s8,  unit: deg }
+      - { name: det14_lat_frac,  offset: 139, length: 2, type: u16, unit: "-" }
+      - { name: det14_lon_int,   offset: 141, length: 1, type: s8,  unit: deg }
+      - { name: det14_lon_frac,  offset: 142, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 15 (offset 144) ─────────────────────────────
+      - { name: det15_obj_id,    offset: 144, length: 1, type: u8,  unit: "-" }
+      - { name: det15_conf,      offset: 145, length: 1, type: u8,  unit: "%" }
+      - { name: det15_slice_idx, offset: 146, length: 1, type: u8,  unit: "-" }
+      - { name: det15_lat_int,   offset: 147, length: 1, type: s8,  unit: deg }
+      - { name: det15_lat_frac,  offset: 148, length: 2, type: u16, unit: "-" }
+      - { name: det15_lon_int,   offset: 150, length: 1, type: s8,  unit: deg }
+      - { name: det15_lon_frac,  offset: 151, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 16 (offset 153) ─────────────────────────────
+      - { name: det16_obj_id,    offset: 153, length: 1, type: u8,  unit: "-" }
+      - { name: det16_conf,      offset: 154, length: 1, type: u8,  unit: "%" }
+      - { name: det16_slice_idx, offset: 155, length: 1, type: u8,  unit: "-" }
+      - { name: det16_lat_int,   offset: 156, length: 1, type: s8,  unit: deg }
+      - { name: det16_lat_frac,  offset: 157, length: 2, type: u16, unit: "-" }
+      - { name: det16_lon_int,   offset: 159, length: 1, type: s8,  unit: deg }
+      - { name: det16_lon_frac,  offset: 160, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 17 (offset 162) ─────────────────────────────
+      - { name: det17_obj_id,    offset: 162, length: 1, type: u8,  unit: "-" }
+      - { name: det17_conf,      offset: 163, length: 1, type: u8,  unit: "%" }
+      - { name: det17_slice_idx, offset: 164, length: 1, type: u8,  unit: "-" }
+      - { name: det17_lat_int,   offset: 165, length: 1, type: s8,  unit: deg }
+      - { name: det17_lat_frac,  offset: 166, length: 2, type: u16, unit: "-" }
+      - { name: det17_lon_int,   offset: 168, length: 1, type: s8,  unit: deg }
+      - { name: det17_lon_frac,  offset: 169, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 18 (offset 171) ─────────────────────────────
+      - { name: det18_obj_id,    offset: 171, length: 1, type: u8,  unit: "-" }
+      - { name: det18_conf,      offset: 172, length: 1, type: u8,  unit: "%" }
+      - { name: det18_slice_idx, offset: 173, length: 1, type: u8,  unit: "-" }
+      - { name: det18_lat_int,   offset: 174, length: 1, type: s8,  unit: deg }
+      - { name: det18_lat_frac,  offset: 175, length: 2, type: u16, unit: "-" }
+      - { name: det18_lon_int,   offset: 177, length: 1, type: s8,  unit: deg }
+      - { name: det18_lon_frac,  offset: 178, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 19 (offset 180) ─────────────────────────────
+      - { name: det19_obj_id,    offset: 180, length: 1, type: u8,  unit: "-" }
+      - { name: det19_conf,      offset: 181, length: 1, type: u8,  unit: "%" }
+      - { name: det19_slice_idx, offset: 182, length: 1, type: u8,  unit: "-" }
+      - { name: det19_lat_int,   offset: 183, length: 1, type: s8,  unit: deg }
+      - { name: det19_lat_frac,  offset: 184, length: 2, type: u16, unit: "-" }
+      - { name: det19_lon_int,   offset: 186, length: 1, type: s8,  unit: deg }
+      - { name: det19_lon_frac,  offset: 187, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 20 (offset 189) ─────────────────────────────
+      - { name: det20_obj_id,    offset: 189, length: 1, type: u8,  unit: "-" }
+      - { name: det20_conf,      offset: 190, length: 1, type: u8,  unit: "%" }
+      - { name: det20_slice_idx, offset: 191, length: 1, type: u8,  unit: "-" }
+      - { name: det20_lat_int,   offset: 192, length: 1, type: s8,  unit: deg }
+      - { name: det20_lat_frac,  offset: 193, length: 2, type: u16, unit: "-" }
+      - { name: det20_lon_int,   offset: 195, length: 1, type: s8,  unit: deg }
+      - { name: det20_lon_frac,  offset: 196, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 21 (offset 198) ─────────────────────────────
+      - { name: det21_obj_id,    offset: 198, length: 1, type: u8,  unit: "-" }
+      - { name: det21_conf,      offset: 199, length: 1, type: u8,  unit: "%" }
+      - { name: det21_slice_idx, offset: 200, length: 1, type: u8,  unit: "-" }
+      - { name: det21_lat_int,   offset: 201, length: 1, type: s8,  unit: deg }
+      - { name: det21_lat_frac,  offset: 202, length: 2, type: u16, unit: "-" }
+      - { name: det21_lon_int,   offset: 204, length: 1, type: s8,  unit: deg }
+      - { name: det21_lon_frac,  offset: 205, length: 2, type: u16, unit: "-" }
+
+      # ─── Detection 22 (offset 207) ─────────────────────────────
+      - { name: det22_obj_id,    offset: 207, length: 1, type: u8,  unit: "-" }
+      - { name: det22_conf,      offset: 208, length: 1, type: u8,  unit: "%" }
+      - { name: det22_slice_idx, offset: 209, length: 1, type: u8,  unit: "-" }
+      - { name: det22_lat_int,   offset: 210, length: 1, type: s8,  unit: deg }
+      - { name: det22_lat_frac,  offset: 211, length: 2, type: u16, unit: "-" }
+      - { name: det22_lon_int,   offset: 213, length: 1, type: s8,  unit: deg }
+      - { name: det22_lon_frac,  offset: 214, length: 2, type: u16, unit: "-" }

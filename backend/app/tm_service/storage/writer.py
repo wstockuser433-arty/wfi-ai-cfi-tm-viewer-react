@@ -7,6 +7,7 @@ from ...schemas.packet import DecodedPacket
 from ...db.models.packet import PacketRow
 from ...db.models.parameter import ParameterRow
 
+
 class StorageWriter:
     def __init__(self, redis: Redis, live_stream: str = "tm.live"):
         self.redis = redis
@@ -26,10 +27,18 @@ class StorageWriter:
             apid=packet.apid,
             subsystem=packet.subsystem,
             card=packet.card,
+            hw_class=packet.hw_class,
             seq=packet.seq,
             crc_ok=packet.crc_ok,
             raw_hex=packet.raw_hex,
             payload_hex=packet.payload_hex,
+            # ⭐ NEW: Header fields so the Inspector can display them
+            unit_id=packet.unit_id,
+            unit_sub_id=packet.unit_sub_id,
+            service_type=packet.service_type,
+            service_subtype=packet.service_subtype,
+            sub_hdr_value=packet.sub_hdr_value,
+            sub_hdr_label=packet.sub_hdr_label,
         )
         db.add(row)
         await db.flush()  # get row.id
@@ -43,5 +52,5 @@ class StorageWriter:
                 value_num=float(f.value) if isinstance(f.value, (int, float)) else None,
                 unit=f.unit,
                 status=f.status,
-                raw_json=json.dumps(f.value) if not isinstance(f.value, (int,float)) else None,
+                raw_json=json.dumps(f.value) if not isinstance(f.value, (int, float)) else None,
             ))

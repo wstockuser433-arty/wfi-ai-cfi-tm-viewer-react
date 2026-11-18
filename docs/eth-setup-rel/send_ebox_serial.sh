@@ -35,7 +35,7 @@ ALL_CARDS=(
   "CAMERA_MOTION_CALC|26|16|104|2|Image Motion Calculation Result"
   "CAMERA_MOTION_COEFF|26|16|104|3|Image Motion Coefficient"
   "CAMERA_TERRAIN_ELEV|26|16|104|4|Terrain Elevation Data"
-  "CTPU_TM|58|48|3|25|CTPU Telemetry"
+  "CTPU_TM|58|1|3|25|CTPU Telemetry"
 )
 
 declare -A CARD_UNITID=()

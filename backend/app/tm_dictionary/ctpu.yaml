@@ -1,131 +1,784 @@
-# ============================================================
-# CTPU Telemetry
-# ============================================================
 unit:
   id: 0x3A
   label: "CTPU"
+  # subsystem: CTPU
+  # unit: CTPU_TM
+  # apid: 0x3A
+  # unit_id: 0x3A
+  # unit_sub_id: 0x01
+  # service: 0x03
+  # subservice: 0x19
 
 cards:
   CTPU_TM:
     label: "CTPU Telemetry"
     unit_id: 0x3A
-    unit_sub_id: 0x30
+    unit_sub_id: 0x01
     service: 0x03
     subservice: 0x19
-    subsystem: CTPU
-    hw_class: HW
     fields:
-      # 1
-      - { name: tm_packet_id, offset: 0, type: u8, unit: "-" }
-      # 2
-      - { name: interface_card_32bit_counter, offset: 1, type: u32, unit: "-" }
-      # 3-14
-      - { name: hw_tm1,  offset: 5,  type: u16, unit: "-" }
-      - { name: hw_tm2,  offset: 7,  type: u16, unit: "-" }
-      - { name: hw_tm3,  offset: 9,  type: u16, unit: "-" }
-      - { name: hw_tm4,  offset: 11, type: u16, unit: "-" }
-      - { name: hw_tm5,  offset: 13, type: u16, unit: "-" }
-      - { name: hw_tm6,  offset: 15, type: u16, unit: "-" }
-      - { name: hw_tm7,  offset: 17, type: u16, unit: "-" }
-      - { name: hw_tm8,  offset: 19, type: u16, unit: "-" }
-      - { name: hw_tm9,  offset: 21, type: u16, unit: "-" }
-      - { name: hw_tm10, offset: 23, type: u16, unit: "-" }
-      - { name: hw_tm11, offset: 25, type: u16, unit: "-" }
-      - { name: hw_tm12, offset: 27, type: u16, unit: "-" }
-      # 15
-      - { name: can_active_bus, offset: 29, type: u8, unit: "-" }
-      # 16-25
-      - { name: can_rx_poll_count, offset: 30, type: u16, unit: "cnt" }
-      - { name: can_tx_tm_pkt_total_count, offset: 32, type: u16, unit: "cnt" }
-      - { name: can_rx_data_block_count, offset: 34, type: u16, unit: "cnt" }
-      - { name: can_tx_data_block_ack_count, offset: 36, type: u16, unit: "cnt" }
-      - { name: can_rx_tc_count, offset: 38, type: u16, unit: "cnt" }
-      - { name: can_tx_tc_ack_count, offset: 40, type: u16, unit: "cnt" }
-      - { name: can_tx_tm_count_interface_card, offset: 42, type: u16, unit: "cnt" }
-      - { name: can_tx_tm_count_cdpm_p, offset: 44, type: u16, unit: "cnt" }
-      - { name: can_tx_tm_count_cdpm_r_ai, offset: 46, type: u16, unit: "cnt" }
-      - { name: can_tx_tm_count_cdpm_r_fpga, offset: 48, type: u16, unit: "cnt" }
-      # 26-32
-      - { name: tm_acq_send_time_sec_interface_card, offset: 50, type: u16, unit: "s" }
-      - { name: tm_acq_send_time_sec_cdpm_p_tm1, offset: 52, type: u16, unit: "s" }
-      - { name: tm_acq_send_time_sec_cdpm_p_tm2, offset: 54, type: u16, unit: "s" }
-      - { name: tm_acq_send_time_sec_cdpm_p_tm3, offset: 56, type: u16, unit: "s" }
-      - { name: tm_acq_send_time_sec_cdpm_r_ai_tm1, offset: 58, type: u16, unit: "s" }
-      - { name: tm_acq_send_time_sec_cdpm_r_ai_tm2, offset: 60, type: u16, unit: "s" }
-      - { name: tm_acq_send_time_sec_cdpm_r_fpga, offset: 62, type: u16, unit: "s" }
-      # 33-36
-      - { name: ebox_uart1_status, offset: 64, type: u8, unit: "-" }
-      - { name: ebox_uart2_status, offset: 65, type: u8, unit: "-" }
-      - { name: ebox_uart3_status, offset: 66, type: u8, unit: "-" }
-      - { name: ebox_uart4_status, offset: 67, type: u8, unit: "-" }
-      # 37-45 (UART1)
-      - { name: ebox_uart1_tx_poll_count, offset: 68, type: u16, unit: "cnt" }
-      - { name: ebox_uart1_rx_tm_pkt_count, offset: 70, type: u16, unit: "cnt" }
-      - { name: ebox_uart1_rx_tm_pkt_timeout_count, offset: 72, type: u16, unit: "cnt" }
-      - { name: ebox_uart1_tx_tc_count, offset: 74, type: u16, unit: "cnt" }
-      - { name: ebox_uart1_rx_tc_ack_count, offset: 76, type: u16, unit: "cnt" }
-      - { name: ebox_uart1_rx_tc_ack_timeout_count, offset: 78, type: u16, unit: "cnt" }
-      - { name: ebox_uart1_tx_data_block_count, offset: 80, type: u16, unit: "cnt" }
-      - { name: ebox_uart1_rx_data_block_ack_count, offset: 82, type: u16, unit: "cnt" }
-      - { name: ebox_uart1_rx_data_block_ack_timeout_count, offset: 84, type: u16, unit: "cnt" }
-      # 46-54 (UART2)
-      - { name: ebox_uart2_tx_poll_count, offset: 86, type: u16, unit: "cnt" }
-      - { name: ebox_uart2_rx_tm_pkt_count, offset: 88, type: u16, unit: "cnt" }
-      - { name: ebox_uart2_rx_tm_pkt_timeout_count, offset: 90, type: u16, unit: "cnt" }
-      - { name: ebox_uart2_tx_tc_count, offset: 92, type: u16, unit: "cnt" }
-      - { name: ebox_uart2_rx_tc_ack_count, offset: 94, type: u16, unit: "cnt" }
-      - { name: ebox_uart2_rx_tc_ack_timeout_count, offset: 96, type: u16, unit: "cnt" }
-      - { name: ebox_uart2_tx_data_block_count, offset: 98, type: u16, unit: "cnt" }
-      - { name: ebox_uart2_rx_data_block_ack_count, offset: 100, type: u16, unit: "cnt" }
-      - { name: ebox_uart2_rx_data_block_ack_timeout_count, offset: 102, type: u16, unit: "cnt" }
-      # 55-63 (UART3)
-      - { name: ebox_uart3_tx_poll_count, offset: 104, type: u16, unit: "cnt" }
-      - { name: ebox_uart3_rx_tm_pkt_count, offset: 106, type: u16, unit: "cnt" }
-      - { name: ebox_uart3_rx_tm_pkt_timeout_count, offset: 108, type: u16, unit: "cnt" }
-      - { name: ebox_uart3_tx_tc_count, offset: 110, type: u16, unit: "cnt" }
-      - { name: ebox_uart3_rx_tc_ack_count, offset: 112, type: u16, unit: "cnt" }
-      - { name: ebox_uart3_rx_tc_ack_timeout_count, offset: 114, type: u16, unit: "cnt" }
-      - { name: ebox_uart3_tx_data_block_count, offset: 116, type: u16, unit: "cnt" }
-      - { name: ebox_uart3_rx_data_block_ack_count, offset: 118, type: u16, unit: "cnt" }
-      - { name: ebox_uart3_rx_data_block_ack_timeout_count, offset: 120, type: u16, unit: "cnt" }
-      # 64-72 (UART4)
-      - { name: ebox_uart4_tx_poll_count, offset: 122, type: u16, unit: "cnt" }
-      - { name: ebox_uart4_rx_tm_pkt_count, offset: 124, type: u16, unit: "cnt" }
-      - { name: ebox_uart4_rx_tm_pkt_timeout_count, offset: 126, type: u16, unit: "cnt" }
-      - { name: ebox_uart4_tx_tc_count, offset: 128, type: u16, unit: "cnt" }
-      - { name: ebox_uart4_rx_tc_ack_count, offset: 130, type: u16, unit: "cnt" }
-      - { name: ebox_uart4_rx_tc_ack_timeout_count, offset: 132, type: u16, unit: "cnt" }
-      - { name: ebox_uart4_tx_data_block_count, offset: 134, type: u16, unit: "cnt" }
-      - { name: ebox_uart4_rx_data_block_ack_count, offset: 136, type: u16, unit: "cnt" }
-      - { name: ebox_uart4_rx_data_block_ack_timeout_count, offset: 138, type: u16, unit: "cnt" }
-      # 73-81 (CDPM_R AI)
-      - { name: cdpm_r_ai_uart_tx_poll_count, offset: 140, type: u16, unit: "cnt" }
-      - { name: cdpm_r_ai_uart_rx_tm_pkt_count, offset: 142, type: u16, unit: "cnt" }
-      - { name: cdpm_r_ai_uart_rx_tm_pkt_timeout_count, offset: 144, type: u16, unit: "cnt" }
-      - { name: cdpm_r_ai_uart_tx_tc_count, offset: 146, type: u16, unit: "cnt" }
-      - { name: cdpm_r_ai_uart_rx_tc_ack_count, offset: 148, type: u16, unit: "cnt" }
-      - { name: cdpm_r_ai_uart_rx_tc_ack_timeout_count, offset: 150, type: u16, unit: "cnt" }
-      - { name: cdpm_r_ai_uart_tx_data_block_count, offset: 152, type: u16, unit: "cnt" }
-      - { name: cdpm_r_ai_uart_rx_data_block_ack_count, offset: 154, type: u16, unit: "cnt" }
-      - { name: cdpm_r_ai_uart_rx_data_block_ack_timeout_count, offset: 156, type: u16, unit: "cnt" }
-      # 82-90 (CDPM_R FPGA)
-      - { name: cdpm_r_fpga_uart_tx_poll_count, offset: 158, type: u16, unit: "cnt" }
-      - { name: cdpm_r_fpga_rx_tm_pkt_count, offset: 160, type: u16, unit: "cnt" }
-      - { name: cdpm_r_fpga_rx_tm_pkt_timeout_count, offset: 162, type: u16, unit: "cnt" }
-      - { name: cdpm_r_fpga_tx_tc_count, offset: 164, type: u16, unit: "cnt" }
-      - { name: cdpm_r_fpga_rx_tc_ack_count, offset: 166, type: u16, unit: "cnt" }
-      - { name: cdpm_r_fpga_rx_tc_ack_timeout_count, offset: 168, type: u16, unit: "cnt" }
-      - { name: cdpm_r_fpga_tx_data_block_count, offset: 170, type: u16, unit: "cnt" }
-      - { name: cdpm_r_fpga_rx_data_block_ack_count, offset: 172, type: u16, unit: "cnt" }
-      - { name: cdpm_r_fpga_rx_data_block_ack_timeout_count, offset: 174, type: u16, unit: "cnt" }
-      # 91-100
-      - { name: tc_execution_success_count, offset: 176, type: u16, unit: "cnt" }
-      - { name: tc_execution_fail_count, offset: 178, type: u16, unit: "cnt" }
-      - { name: last_tc_executed_command_code, offset: 180, type: u16, unit: "-" }
-      - { name: last_tc_failed_command_code, offset: 182, type: u16, unit: "-" }
-      - { name: last_tc_failed_command_reason, offset: 184, type: u16, unit: "-" }
-      - { name: file_upload_pkts_rx_from_ground, offset: 186, type: u16, unit: "cnt" }
-      - { name: file_upload_pkts_tx_to_cdpm_p, offset: 188, type: u16, unit: "cnt" }
-      - { name: file_upload_ack_rx_from_cdpm_p, offset: 190, type: u16, unit: "cnt" }
-      - { name: file_upload_pkts_tx_to_cdpm_r, offset: 192, type: u16, unit: "cnt" }
-      - { name: file_upload_ack_rx_from_cdpm_r, offset: 194, type: u16, unit: "cnt" }
+      - name: hw_tm1
+        offset: 0
+        length: 2
+        type: u16
+        unit: "-"
+      - name: hw_tm2
+        offset: 2
+        length: 2
+        type: u16
+        unit: "-"
+      - name: hw_tm3
+        offset: 4
+        length: 2
+        type: u16
+        unit: "-"
+      - name: hw_tm4
+        offset: 6
+        length: 2
+        type: u16
+        unit: "-"
+      - name: hw_tm5
+        offset: 8
+        length: 2
+        type: u16
+        unit: "-"
+      - name: hw_tm6
+        offset: 10
+        length: 2
+        type: u16
+        unit: "-"
+      - name: hw_tm7
+        offset: 12
+        length: 2
+        type: u16
+        unit: "-"
+      - name: hw_tm8
+        offset: 14
+        length: 2
+        type: u16
+        unit: "-"
+      - name: hw_tm9
+        offset: 16
+        length: 2
+        type: u16
+        unit: "-"
+      - name: hw_tm10
+        offset: 18
+        length: 2
+        type: u16
+        unit: "-"
+      - name: hw_tm11
+        offset: 20
+        length: 2
+        type: u16
+        unit: "-"
+      - name: hw_tm12
+        offset: 22
+        length: 2
+        type: u16
+        unit: "-"
+      - name: sw_version
+        offset: 24
+        length: 4
+        type: u32
+        unit: "-"
+      - name: uptime
+        offset: 28
+        length: 4
+        type: u32
+        unit: s
+      - name: onboard_time_sec
+        offset: 32
+        length: 4
+        type: u32
+        unit: s
+      - name: onboard_time_ms
+        offset: 36
+        length: 2
+        type: u16
+        unit: ms
+      - name: status_flags
+        offset: 38
+        length: 1
+        type: u8
+        unit: "-"
+        bits:
+          - { name: boot_flag,      bit: 0 }
+          - { name: watchdog_reset, bit: 1 }
+          - { name: can_error,      bit: 2 }
+          - { name: rs422_error,    bit: 3 }
+          - { name: tc_queue_full,  bit: 4 }
+          - { name: tm_queue_full,  bit: 5 }
+          - { name: memory_error,   bit: 6 }
+          - { name: reserved,       bit: 7 }
+      - name: startup_status
+        offset: 39
+        length: 1
+        type: u8
+        enum:
+          0: Normal
+          1: Recovery
+          2: Safe Mode
+          3: Boot
+      - name: image_slot_state
+        offset: 40
+        length: 1
+        type: u8
+        unit: "-"
+        bits:
+          - { name: slot,     low: 0, high: 3 }
+          - { name: reconf,   low: 4, high: 7 }
+      - name: second_of_16s_cycle
+        offset: 41
+        length: 1
+        type: u8
+        unit: s
+      - name: tm_forwarding_mask_applied
+        offset: 42
+        length: 1
+        type: u8
+        unit: "-"
+        bits:
+          - { name: ebox,        bit: 0 }
+          - { name: cdpm_p,      bit: 1 }
+          - { name: cdpm_r_ai,   bit: 2 }
+          - { name: cdpm_r_fpga, bit: 3 }
+
+      - name: tm_forwarding_mask_requested
+        offset: 43
+        length: 1
+        type: u8
+        unit: "-"
+        bits:
+          - { name: ebox,        bit: 0 }
+          - { name: cdpm_p,      bit: 1 }
+          - { name: cdpm_r_ai,   bit: 2 }
+          - { name: cdpm_r_fpga, bit: 3 }
+      - name: events_logged
+        offset: 44
+        length: 2
+        type: u16
+        unit: "-"
+      - name: tcs_accepted
+        offset: 46
+        length: 2
+        type: u16
+        unit: "-"
+      - name: tcs_rejected
+        offset: 48
+        length: 2
+        type: u16
+        unit: "-"
+      - name: hw_tcs_executed
+        offset: 50
+        length: 2
+        type: u16
+        unit: "-"
+      - name: sw_tcs_executed
+        offset: 52
+        length: 2
+        type: u16
+        unit: "-"
+      - name: can_rx_frames
+        offset: 54
+        length: 2
+        type: u16
+        unit: cnt
+      - name: can_tx_frames
+        offset: 56
+        length: 2
+        type: u16
+        unit: cnt
+      - name: can_rx_errors
+        offset: 58
+        length: 2
+        type: u16
+        unit: cnt
+      - name: can_tx_errors
+        offset: 60
+        length: 2
+        type: u16
+        unit: cnt
+      - name: can_ack_timeouts
+        offset: 62
+        length: 2
+        type: u16
+        unit: cnt
+      - name: can_rx_timeouts
+        offset: 64
+        length: 2
+        type: u16
+        unit: cnt
+      - name: can_sequence_errors
+        offset: 66
+        length: 2
+        type: u16
+        unit: cnt
+      - name: can_checksum_errors
+        offset: 68
+        length: 2
+        type: u16
+        unit: cnt
+      - name: can_dropped_frames
+        offset: 70
+        length: 2
+        type: u16
+        unit: cnt
+      - name: can_bus_off_count
+        offset: 72
+        length: 2
+        type: u16
+        unit: cnt
+      - name: can_reassembly_resets
+        offset: 74
+        length: 2
+        type: u16
+        unit: cnt
+      - name: can_unknown_id
+        offset: 76
+        length: 2
+        type: u16
+        unit: cnt
+      - name: can_size_errors
+        offset: 78
+        length: 2
+        type: u16
+        unit: cnt
+      - name: can_node_mismatch
+        offset: 80
+        length: 2
+        type: u16
+        unit: cnt
+      - name: can_format_errors
+        offset: 82
+        length: 2
+        type: u16
+        unit: cnt
+      - name: can_hk_received
+        offset: 84
+        length: 2
+        type: u16
+        unit: cnt
+      - name: can_time_broadcasts_received
+        offset: 86
+        length: 2
+        type: u16
+        unit: cnt
+      - name: can_bus_a_reinits
+        offset: 88
+        length: 2
+        type: u16
+        unit: cnt
+      - name: can_bus_b_reinits
+        offset: 90
+        length: 2
+        type: u16
+        unit: cnt
+      - name: can_bus_a_state
+        offset: 92
+        length: 1
+        type: u8
+        enum:
+          0: Off
+          1: On
+          2: Error Passive
+          3: Bus Off
+      - name: can_bus_b_state
+        offset: 93
+        length: 1
+        type: u8
+        enum:
+          0: Off
+          1: On
+          2: Error Passive
+          3: Bus Off
+      - name: ch0_ebox_p_polls_sent
+        offset: 94
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch0_ebox_p_tm_received
+        offset: 96
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch0_ebox_p_poll_timeouts
+        offset: 98
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch0_ebox_p_tcs_sent
+        offset: 100
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch0_ebox_p_acks_received
+        offset: 102
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch0_ebox_p_tcs_without_ack
+        offset: 104
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch0_ebox_p_rx_errors
+        offset: 106
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch0_ebox_p_unexpected_packets
+        offset: 107
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch0_ebox_p_ack_reception_fail
+        offset: 108
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch0_ebox_p_ack_execution_fail
+        offset: 109
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch1_ebox_r_polls_sent
+        offset: 110
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch1_ebox_r_tm_received
+        offset: 112
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch1_ebox_r_poll_timeouts
+        offset: 114
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch1_ebox_r_tcs_sent
+        offset: 116
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch1_ebox_r_acks_received
+        offset: 118
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch1_ebox_r_tcs_without_ack
+        offset: 120
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch1_ebox_r_rx_errors
+        offset: 122
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch1_ebox_r_unexpected_packets
+        offset: 123
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch1_ebox_r_ack_reception_fail
+        offset: 124
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch1_ebox_r_ack_execution_fail
+        offset: 125
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch2_cdpm_p_polls_sent
+        offset: 126
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch2_cdpm_p_tm_received
+        offset: 128
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch2_cdpm_p_poll_timeouts
+        offset: 130
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch2_cdpm_p_tcs_sent
+        offset: 132
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch2_cdpm_p_acks_received
+        offset: 134
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch2_cdpm_p_tcs_without_ack
+        offset: 136
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch2_cdpm_p_rx_errors
+        offset: 138
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch2_cdpm_p_unexpected_packets
+        offset: 139
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch2_cdpm_p_ack_reception_fail
+        offset: 140
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch2_cdpm_p_ack_execution_fail
+        offset: 141
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch3_cdpm_p_r_polls_sent
+        offset: 142
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch3_cdpm_p_r_tm_received
+        offset: 144
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch3_cdpm_p_r_poll_timeouts
+        offset: 146
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch3_cdpm_p_r_tcs_sent
+        offset: 148
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch3_cdpm_p_r_acks_received
+        offset: 150
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch3_cdpm_p_r_tcs_without_ack
+        offset: 152
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch3_cdpm_p_r_rx_errors
+        offset: 154
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch3_cdpm_p_r_unexpected_packets
+        offset: 155
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch3_cdpm_p_r_ack_reception_fail
+        offset: 156
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch3_cdpm_p_r_ack_execution_fail
+        offset: 157
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch4_cdpm_r_ai_polls_sent
+        offset: 158
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch4_cdpm_r_ai_tm_received
+        offset: 160
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch4_cdpm_r_ai_poll_timeouts
+        offset: 162
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch4_cdpm_r_ai_tcs_sent
+        offset: 164
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch4_cdpm_r_ai_acks_received
+        offset: 166
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch4_cdpm_r_ai_tcs_without_ack
+        offset: 168
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch4_cdpm_r_ai_rx_errors
+        offset: 170
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch4_cdpm_r_ai_unexpected_packets
+        offset: 171
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch4_cdpm_r_ai_ack_reception_fail
+        offset: 172
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch4_cdpm_r_ai_ack_execution_fail
+        offset: 173
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch5_cdpm_r_fpga_polls_sent
+        offset: 174
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch5_cdpm_r_fpga_tm_received
+        offset: 176
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch5_cdpm_r_fpga_poll_timeouts
+        offset: 178
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch5_cdpm_r_fpga_tcs_sent
+        offset: 180
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch5_cdpm_r_fpga_acks_received
+        offset: 182
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch5_cdpm_r_fpga_tcs_without_ack
+        offset: 184
+        length: 2
+        type: u16
+        unit: cnt
+      - name: ch5_cdpm_r_fpga_rx_errors
+        offset: 186
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch5_cdpm_r_fpga_unexpected_packets
+        offset: 187
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch5_cdpm_r_fpga_ack_reception_fail
+        offset: 188
+        length: 1
+        type: u8
+        unit: cnt
+      - name: ch5_cdpm_r_fpga_ack_execution_fail
+        offset: 189
+        length: 1
+        type: u8
+        unit: cnt
+      - name: unit0_ebox_active_link
+        offset: 190
+        length: 1
+        type: u8
+        unit: "-"
+      - name: unit0_ebox_failed_requests_in_row
+        offset: 191
+        length: 1
+        type: u8
+        unit: cnt
+      - name: unit0_ebox_link_switch_overs
+        offset: 192
+        length: 1
+        type: u8
+        unit: cnt
+      - name: unit0_ebox_last_tc_subservice
+        offset: 193
+        length: 1
+        type: u8
+        unit: "-"
+      - name: unit0_ebox_last_tc_reception_status
+        offset: 194
+        length: 1
+        type: u8
+        unit: "-"
+      - name: unit0_ebox_last_tc_execution_status
+        offset: 195
+        length: 1
+        type: u8
+        unit: "-"
+      - name: unit1_cdpm_p_active_link
+        offset: 196
+        length: 1
+        type: u8
+        unit: "-"
+      - name: unit1_cdpm_p_failed_requests_in_row
+        offset: 197
+        length: 1
+        type: u8
+        unit: cnt
+      - name: unit1_cdpm_p_link_switch_overs
+        offset: 198
+        length: 1
+        type: u8
+        unit: cnt
+      - name: unit1_cdpm_p_last_tc_subservice
+        offset: 199
+        length: 1
+        type: u8
+        unit: "-"
+      - name: unit1_cdpm_p_last_tc_reception_status
+        offset: 200
+        length: 1
+        type: u8
+        unit: "-"
+      - name: unit1_cdpm_p_last_tc_execution_status
+        offset: 201
+        length: 1
+        type: u8
+        unit: "-"
+      - name: unit2_cdpm_r_ai_active_link
+        offset: 202
+        length: 1
+        type: u8
+        unit: "-"
+      - name: unit2_cdpm_r_ai_failed_requests_in_row
+        offset: 203
+        length: 1
+        type: u8
+        unit: cnt
+      - name: unit2_cdpm_r_ai_link_switch_overs
+        offset: 204
+        length: 1
+        type: u8
+        unit: cnt
+      - name: unit2_cdpm_r_ai_last_tc_subservice
+        offset: 205
+        length: 1
+        type: u8
+        unit: "-"
+      - name: unit2_cdpm_r_ai_last_tc_reception_status
+        offset: 206
+        length: 1
+        type: u8
+        unit: "-"
+      - name: unit2_cdpm_r_ai_last_tc_execution_status
+        offset: 207
+        length: 1
+        type: u8
+        unit: "-"
+      - name: unit3_cdpm_r_fpga_active_link
+        offset: 208
+        length: 1
+        type: u8
+        unit: "-"
+      - name: unit3_cdpm_r_fpga_failed_requests_in_row
+        offset: 209
+        length: 1
+        type: u8
+        unit: cnt
+      - name: unit3_cdpm_r_fpga_link_switch_overs
+        offset: 210
+        length: 1
+        type: u8
+        unit: cnt
+      - name: unit3_cdpm_r_fpga_last_tc_subservice
+        offset: 211
+        length: 1
+        type: u8
+        unit: "-"
+      - name: unit3_cdpm_r_fpga_last_tc_reception_status
+        offset: 212
+        length: 1
+        type: u8
+        unit: "-"
+      - name: unit3_cdpm_r_fpga_last_tc_execution_status
+        offset: 213
+        length: 1
+        type: u8
+        unit: "-"
+      - name: td_from_cdpm_p
+        offset: 214
+        length: 2
+        type: u16
+        unit: "-"
+      - name: td_from_cdpm_r_ai
+        offset: 216
+        length: 2
+        type: u16
+        unit: "-"
+      - name: cycles_without_td
+        offset: 218
+        length: 2
+        type: u16
+        unit: cnt
+      - name: tm_fetched
+        offset: 220
+        length: 2
+        type: u16
+        unit: cnt
+      - name: tm_fetch_failed
+        offset: 222
+        length: 2
+        type: u16
+        unit: cnt
+      - name: tcs_forwarded
+        offset: 224
+        length: 2
+        type: u16
+        unit: cnt
+      - name: tcs_refused_queue_full
+        offset: 226
+        length: 1
+        type: u8
+        unit: cnt
+      - name: free_running_cycles
+        offset: 227
+        length: 1
+        type: u8
+        unit: cnt
+      - name: phase_corrections_16s
+        offset: 228
+        length: 1
+        type: u8
+        unit: cnt
+      - name: td_packets_sent
+        offset: 229
+        length: 2
+        type: u16
+        unit: cnt
+      - name: idle_packets_sent
+        offset: 231
+        length: 2
+        type: u16
+        unit: cnt
+      - name: rotation_entries_skipped
+        offset: 233
+        length: 1
+        type: u8
+        unit: cnt
+      - name: requested_tms_sent
+        offset: 234
+        length: 1
+        type: u8
+        unit: cnt
+      - name: spare
+        offset: 235
+        length: 2
+        type: u16
+        unit: "-"

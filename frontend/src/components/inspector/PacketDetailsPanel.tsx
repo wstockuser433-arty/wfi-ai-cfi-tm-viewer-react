@@ -155,7 +155,7 @@ function SinglePacketView({ packet }: { packet: DecodedPacket }) {
         <Row label="RX time (UTC)" value={new Date(packet.timestamp * 1000).toISOString()} />
       </Section>
 
-      <Section title={`SOURCE DATA (${packet.length} bytes)`}>
+      <Section title={`SOURCE DATA (${(packet.payload_hex?.length ?? 0) / 2} BYTES)`}>
         <div className="mono text-[11px] text-slate-300 break-all bg-space-950/60 border border-white/5 rounded p-2">
           {packet.payload_hex}
         </div>

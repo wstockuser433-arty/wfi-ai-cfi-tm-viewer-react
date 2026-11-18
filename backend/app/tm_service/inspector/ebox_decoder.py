@@ -52,15 +52,15 @@ PAYLOAD_OFFSET_IN_EFFECTIVE = EFFECTIVE_DATA_HEADER_LEN
 # ─── Struct helpers ─────────────────────────────────────────────────────
 TYPE_FMT = {
     "f32": "f", "f64": "d",
-    "u8": "B", "u16": "H", "u32": "I", "u24": None,   # u24 handled specially
-    "i8": "b", "i16": "h", "i32": "i",
+    "u8": "B", "u16": "H", "u24": None, "u32": "I", "u64": "Q",
+    "i8": "b", "i16": "h", "i32": "i", "i64": "q",
 }
 TYPE_SIZE = {
     "f32": 4, "f64": 8,
-    "u8": 1, "u16": 2, "u32": 4, "u24": 3,
-    "i8": 1, "i16": 2, "i32": 4,
+    "u8": 1, "u16": 2, "u24": 3, "u32": 4, "u64": 8,
+    "i8": 1, "i16": 2, "i32": 4, "i64": 8,
+    "s8": 1, "s16": 2, "s32": 4, "s64": 8,
 }
-
 
 class EboxDecoder(PacketDecoder):
     """EBOX protocol decoder — 4-tuple keyed per ICD v1.2."""
