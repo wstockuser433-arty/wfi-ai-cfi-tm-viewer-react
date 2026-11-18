@@ -94,7 +94,10 @@ function apidLabel(a: { apid: number; subsystem: string; card: string; unit_sub_
             <option value="">no cards match filter</option>
           ) : (
             availableApids.map((a) => (
-              <option key={a.apid} value={a.apid}>
+              <option
+                key={`${a.apid}-${a.unit_sub_id ?? ""}-${a.service ?? ""}-${a.subservice ?? ""}-${a.card}`}
+                value={a.apid}
+              >
                 {apidLabel(a)}
               </option>
             ))

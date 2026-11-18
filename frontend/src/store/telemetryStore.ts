@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import type { DecodedPacket } from "@/types/packet";
 import type { MetaResponse } from "@/types/meta";
 import { packetId } from "@/types/packet";
+import { API_BASE } from "@/lib/api";
 
 export type LinkState = "connected" | "connecting" | "disconnected";
 
@@ -18,7 +19,6 @@ export interface Alarm {
 }
 
 interface TelemetryState {
-  // ─── Data ───────────────────────────────────────────
   packets: DecodedPacket[];
   latestByApid: Record<number, DecodedPacket>;
   latestByParam: Record<string, DecodedPacket>;
@@ -28,14 +28,15 @@ interface TelemetryState {
   totalReceived: number;
   meta: MetaResponse | null;
   sessionStart: number; 
+  
+  hasHydrated: boolean;
+  isHydrating: boolean;
 
-  // ─── Selection & UI ─────────────────────────────────
   selectedPacketId: string | null;
   diffBaseId: string | null;
   sidebarOpen: boolean;
   bookmarks: string[];
 
-  // ─── Actions ────────────────────────────────────────
   ingest: (batch: DecodedPacket[], isLive?: boolean) => void;  
   setLink: (s: LinkState) => void;
   setMeta: (m: MetaResponse) => void;
@@ -48,15 +49,15 @@ interface TelemetryState {
   toggleSidebar: () => void;
   toggleBookmark: (id: string) => void;
   addPackets: (batch: DecodedPacket[]) => void;
+  hydrateFromHistory: () => Promise<void>;
 }
 
-const MAX_PACKETS = 2000;
+const MAX_PACKETS = 10000;
 const MAX_ALARMS = 100;
 
 export const useTelemetry = create<TelemetryState>()(
   persist(
     (set) => ({
-      // ─── Initial state ──────────────────────────────
       packets: [],
       latestByApid: {},
       latestByParam: {},
@@ -70,11 +71,50 @@ export const useTelemetry = create<TelemetryState>()(
       diffBaseId: null,
       sidebarOpen: true,
       bookmarks: [],
+      hasHydrated: false,
+      isHydrating: false,
 
-      // ─── Actions ────────────────────────────────────
+      hydrateFromHistory: async () => {
+        const { hasHydrated } = useTelemetry.getState();
+        if (hasHydrated) return;
+        useTelemetry.setState({ isHydrating: true, hasHydrated: true });
+        try {
+          const now = new Date();
+          const start = new Date(now.getTime() - 24 * 3600 * 1000).toISOString();
+          const res = await fetch(
+            `${API_BASE}/api/history?start=${start}&end=${now.toISOString()}&limit=10000&order=desc`
+          );
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const j = await res.json();
+          const rows = (j.packets ?? []).map((r: any) => ({
+            ...r,
+            timestamp: new Date(r.ts).getTime() / 1000,
+            apid_name: r.card ?? "",
+            subsystem: r.subsystem ?? "",
+            card: r.card ?? "",
+            hw_class: "",
+            length: r.raw_hex ? r.raw_hex.length / 2 : 0,
+            payload_hex: "",
+            raw_hex: r.raw_hex ?? "",
+            fields: {},
+            cc: 0,
+          })) as DecodedPacket[];
+
+          const asc = [...rows].reverse();
+          useTelemetry.setState((state) => {
+            const existingIds = new Set(state.packets.map(packetId));
+            const fresh = asc.filter((p) => !existingIds.has(packetId(p)));
+            const combined = [...state.packets, ...fresh].slice(-MAX_PACKETS);
+            return { packets: combined, isHydrating: false };
+          });
+        } catch {
+          useTelemetry.setState({ isHydrating: false });
+        }
+      },
+
       setSessionState: (start, count) =>
         set({
-          sessionStart: start * 1000,  // backend sends seconds; store as ms
+          sessionStart: start * 1000,
           totalReceived: count,
         }),
 
@@ -126,7 +166,6 @@ export const useTelemetry = create<TelemetryState>()(
             }
           }
 
-          // Auto-select the latest packet if nothing is selected
           let nextSelected = state.selectedPacketId;
           if (!nextSelected && batch.length > 0) {
             nextSelected = packetId(batch[batch.length - 1]);
@@ -157,7 +196,6 @@ export const useTelemetry = create<TelemetryState>()(
             }
           }
 
-          // Merge new packets with existing, remove duplicates by ID, keep size cap
           const existingIds = new Set(state.packets.map(packetId));
           const newPackets = batch.filter((p) => !existingIds.has(packetId(p)));
           const combined = [...state.packets, ...newPackets].slice(-MAX_PACKETS);
@@ -187,7 +225,6 @@ export const useTelemetry = create<TelemetryState>()(
     }),
     {
       name: "tm-viewer-telemetry",
-      // Only persist bookmarks + sidebar state, not live packets
       partialize: (state) => ({
         bookmarks: state.bookmarks,
         sidebarOpen: state.sidebarOpen,
@@ -196,7 +233,6 @@ export const useTelemetry = create<TelemetryState>()(
   )
 );
 
-// Sync Zustand store across tabs/windows
 if (typeof window !== "undefined") {
   window.addEventListener("storage", (e) => {
     if (e.key === "tm-viewer-telemetry") {

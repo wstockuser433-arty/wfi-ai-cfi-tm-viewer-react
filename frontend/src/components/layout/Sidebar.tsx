@@ -1,6 +1,7 @@
 import {
   Radio, TrendingUp, Database, Bell, Settings2, Boxes,
-  ChevronLeft, ChevronRight, ChevronDown, Bookmark, X, ExternalLink
+  ChevronLeft, ChevronRight, ChevronDown, Bookmark, X, ExternalLink,
+  ListTree,
 } from "lucide-react";
 import { useTelemetry } from "@/store/telemetryStore";
 import { useFilters } from "@/store/filterStore";
@@ -43,12 +44,13 @@ export function Sidebar() {
   };
 
   const nav: NavItem[] = [
-    { id: "dashboard", label: "Live", icon: Radio },
-    { id: "trends", label: "Trends", icon: TrendingUp },
-    { id: "storage", label: "Storage", icon: Database },
-    { id: "alarms", label: "Alarms", icon: Bell },
-    { id: "inspector", label: "Inspector", icon: Settings2 },
-  ];
+  { id: "dashboard",    label: "Live",         icon: Radio },
+  { id: "packets-live", label: "Packets Live", icon: ListTree }, // NEW
+  { id: "trends",       label: "Trends",       icon: TrendingUp },
+  { id: "storage",      label: "Storage",      icon: Database },
+  { id: "alarms",       label: "Alarms",       icon: Bell },
+  { id: "inspector",    label: "Inspector",    icon: Settings2 },
+];
 
   const savedPackets = bookmarks
     .map((id) => packets.find((p) => packetId(p) === id))
@@ -204,13 +206,15 @@ export function Sidebar() {
                           <button
                             key={cardKey}
                             onClick={() => {
-                              setPacketFilter({
-                                unit_sub_id: card.unit_sub_id,
-                                service: card.service,
-                                subservice: card.subservice,
-                              });
-                              setPage("inspector");
-                            }}
+                                  setPacketFilter({
+                                    unit_id: card.unit_id,
+                                    unit_sub_id: card.unit_sub_id,
+                                    service: card.service,
+                                    subservice: card.subservice,
+                                    subsystem: key, // ⭐ Pass the subsystem key (e.g., "CAMERA")
+                                  });
+                                  setPage("inspector");
+                                }}
                             className="w-full flex items-center px-2 py-1 rounded text-[11px] text-left hover:bg-white/5 transition-colors group"
                           >
                             {/* ⭐ Add a colored dot or text */}

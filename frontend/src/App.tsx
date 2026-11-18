@@ -17,7 +17,8 @@ import { InspectorPage } from "./pages/InspectorPage";
 // import { LinksPage } from "./pages/LinksPage";
 import { LogsPopup } from "./components/logs/LogsPopup";
 import { StandalonePacketView } from "./pages/StandalonePacketView"; 
-
+// import PacketsLive from "@/pages/PacketsLive";
+import PacketsLive from "./pages/PacketsLive";
 
 export default function App() {
   // ⭐ Standalone route — check before rendering the full app shell
@@ -67,6 +68,7 @@ export default function App() {
         <main className="flex-1 min-h-0 overflow-auto p-4">
           <ErrorBoundary>
             {page === "dashboard" && <LivePage />}
+            {page === "packets-live" && <PacketsLive />}
             {page === "alarms"    && <AlarmsPage />}
             {page === "trends"    && <TrendsPage />}
             {page === "storage"   && <StoragePage />}

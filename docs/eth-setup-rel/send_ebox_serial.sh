@@ -29,22 +29,24 @@ set -euo pipefail
 # ... [PASTE OUTER_HEADER_HEX, EBOX_APID, etc. HERE] ...
 # ... [PASTE read -r -d '' PY_GEN <<'PY' ... PY HERE] ...
 
-# Format: "CARD_KEY|unit_sub_id|service|subservice|description"
+# Format: "CARD_KEY|unit_id|unit_sub_id|service|subservice|description"
 ALL_CARDS=(
-  "CAMERA_UNIT_STATUS|16|104|1|Camera Unit Status Telemetry"
-  "CAMERA_MOTION_CALC|16|104|2|Image Motion Calculation Result"
-  "CAMERA_MOTION_COEFF|16|104|3|Image Motion Coefficient"
-  "CAMERA_TERRAIN_ELEV|16|104|4|Terrain Elevation Data"
-  "CTPU_TM|48|3|25|CTPU Telemetry"
+  "CAMERA_UNIT_STATUS|26|16|104|1|Camera Unit Status Telemetry"
+  "CAMERA_MOTION_CALC|26|16|104|2|Image Motion Calculation Result"
+  "CAMERA_MOTION_COEFF|26|16|104|3|Image Motion Coefficient"
+  "CAMERA_TERRAIN_ELEV|26|16|104|4|Terrain Elevation Data"
+  "CTPU_TM|58|48|3|25|CTPU Telemetry"
 )
 
+declare -A CARD_UNITID=()
 declare -A CARD_SUBID=()
 declare -A CARD_SVC=()
 declare -A CARD_SUBSVC=()
 declare -A CARD_DESC=()
 
 for entry in "${ALL_CARDS[@]}"; do
-  IFS='|' read -r key sub svc subsvc desc <<<"$entry"
+  IFS='|' read -r key uid sub svc subsvc desc <<<"$entry"
+  CARD_UNITID[$key]=$uid
   CARD_SUBID[$key]=$sub
   CARD_SVC[$key]=$svc
   CARD_SUBSVC[$key]=$subsvc
@@ -499,14 +501,29 @@ cards = load_all_cards(path)
 if cmd == "check":
     sel = []
     for t in sys.argv[3:]:
-        key, sub, svc, ss = t.split(":")
+        parts = t.split(":")
+        if len(parts) != 5:
+            die("check token %r must be KEY:unit_id:sub:svc:subsvc" % t)
+        key, uid, sub, svc, ss = parts
         if key not in cards:
             die("card %s is not in %s" % (key, path))
         c = cards[key]
-        if (c.get("unit_sub_id"), c.get("service"), c.get("subservice")) != (int(sub), int(svc), int(ss)):
-            die("card %s: script has sub=0x%02X svc=0x%02X subsvc=0x%02X but %s has sub=0x%02X svc=0x%02X subsvc=0x%02X"
-                % (key, int(sub), int(svc), int(ss), path,
-                   c.get("unit_sub_id", 0), c.get("service", 0), c.get("subservice", 0)))
+
+        # Match all four tuple components against the yaml
+        got = (
+            c.get("unit_id", 0),
+            c.get("unit_sub_id", 0),
+            c.get("service", 0),
+            c.get("subservice", 0),
+        )
+        want = (int(uid), int(sub), int(svc), int(ss))
+        if got != want:
+            die(
+                "card %s: script has unit_id=0x%02X sub=0x%02X svc=0x%02X subsvc=0x%02X "
+                "but yaml has unit_id=0x%02X sub=0x%02X svc=0x%02X subsvc=0x%02X"
+                % (key, want[0], want[1], want[2], want[3],
+                   got[0], got[1], got[2], got[3])
+            )
         sel.append(key)
     validate(cards, sorted(set(sel)))
 else:
@@ -563,14 +580,12 @@ EOF
   exit 1
 }
 
-# (Copy list_cards() here from send_ebox_tm.sh)
 list_cards() {
-  printf '%-14s %-6s %-6s %-6s %s\n' "CARD" "SUB_ID" "SVC" "SUBSVC" "DESCRIPTION"
+  printf '%-20s %-6s %-6s %-6s %-6s %s\n' "CARD" "UNIT_ID" "SUB_ID" "SVC" "SUBSVC" "DESCRIPTION"
   for entry in "${ALL_CARDS[@]}"; do
-    IFS='|' read -r key sub svc subsvc desc <<<"$entgrep -n "read -r -d '' PY_GEN" send_ebox_serial.sh
-grep -n "REALISTIC_RAW_VALUES" send_ebox_serial.shry"
-    printf '%-14s 0x%02X   0x%02X   0x%02X   %s\n' \
-      "$key" "$sub" "$svc" "$subsvc" "$desc"
+    IFS='|' read -r key uid sub svc subsvc desc <<<"$entry"
+    printf '%-20s 0x%02X   0x%02X   0x%02X   0x%02X   %s\n' \
+      "$key" "$uid" "$sub" "$svc" "$subsvc" "$desc"
   done
 }
 
@@ -697,7 +712,7 @@ done
 if [[ -n "$YAML_FILE" ]]; then
   triples=()
   for card in "${CARDS[@]}"; do
-    triples+=("${card}:${CARD_SUBID[$card]}:${CARD_SVC[$card]}:${CARD_SUBSVC[$card]}")
+    triples+=("${card}:${CARD_UNITID[$card]}:${CARD_SUBID[$card]}:${CARD_SVC[$card]}:${CARD_SUBSVC[$card]}")
   done
   python3 -I -c "$PY_GEN" check "$YAML_FILE" "${triples[@]}"
 fi
@@ -747,7 +762,9 @@ send_packet() {
   local word0=$(( (EBOX_VERSION << 13) | (0 << 12) | (1 << 11) | EBOX_APID ))
   local word1=$(( (SEQ_FLAGS_UNSEGMENTED << 14) | (seq & 0x3FFF) ))
   local sub_hdr_hex=$(printf '%02X' "$SUB_HDR_BYTE")
-  local eff_hdr_hex=$(printf '%02X%02X%02X%02X' "$EBOX_UNIT_ID" "$sub_id" "$svc" "$subsvc")
+local unit_id=${CARD_UNITID[$card]}
+local eff_hdr_hex=$(printf '%02X%02X%02X%02X' \
+  "$unit_id" "$sub_id" "$svc" "$subsvc")
 
   local body="${sub_hdr_hex}${eff_hdr_hex}${payload}"
   local body_len=$(( ${#body} / 2 ))

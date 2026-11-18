@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 export type Page =
   | "dashboard"   // Live
+  | "packets-live" // NEW
   | "trends"
   | "storage"
   | "alarms"
@@ -9,13 +10,21 @@ export type Page =
   | "playback"
   | "links";
 
+export interface PacketFilter {
+  unit_id?: number;
+  unit_sub_id?: number;
+  service?: number;
+  subservice?: number;
+  subsystem?: string; // ⭐ Added to help Inspector query history
+}
+
 interface UiState {
   mode: "live" | "playback";
   activePage: Page;
   setMode: (m: UiState["mode"]) => void;
   setPage: (p: Page) => void;
-  packetFilter: { unit_sub_id?: number; service?: number; subservice?: number } | null;
-  setPacketFilter: (filter: { unit_sub_id?: number; service?: number; subservice?: number } | null) => void;
+  packetFilter: PacketFilter | null;
+  setPacketFilter: (filter: PacketFilter | null) => void;
   logsOpen: boolean;
   setLogsOpen: (open: boolean) => void;
 }

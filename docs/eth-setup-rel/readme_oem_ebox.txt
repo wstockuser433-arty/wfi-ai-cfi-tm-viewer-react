@@ -2,6 +2,18 @@ cd /home/hassan/Documents/Hassan/scc-work/wfi-ai-cfi-tm-viewer-react-oem-packets
 
 new commands
 
+Send everything
+
+./send_ebox_serial.sh \
+  -p /tmp/ttyV0 \
+  -y ../../backend/app/tm_dictionary \
+  -c all \
+  -n 0 \
+  -i 1 \
+  -v
+
+
+
 Via Serial 
 
 Terminal 1 (Camera)
@@ -158,3 +170,75 @@ grep -rnE "(§|section|table)[[:space:]]*[45]\.[0-9]" \
 find . \
   -type d \( -name node_modules -o -name .git -o -name venv -o -name .venv -o -name dist -o -name build \) -prune -o \
   -type f \( -iname "*icd*" -o -iname "*interface*control*" \) -print
+
+
+
+docker_db_commands
+
+Here are the commands to view your current data count, truncate the tables, and then monitor how new packets flow in.
+
+### 1) Check how many packets are currently there
+Run this to see the total count and the time range of your current data:
+
+```bash
+docker exec -it tm-postgres psql -U tm -d tmdb -c "
+  SELECT 
+    count(*) AS total_packets, 
+    min(ts) AS oldest_packet, 
+    max(ts) AS newest_packet 
+  FROM packets;
+"
+```
+
+*(Optional)* If you want to see the breakdown by subsystem to understand what's arriving:
+
+```bash
+docker exec -it tm-postgres psql -U tm -d tmdb -c "
+  SELECT subsystem, count(*) 
+  FROM packets 
+  GROUP BY subsystem 
+  ORDER BY count(*) DESC;
+"
+```
+
+---
+
+### 2) Delete all packets (and their associated decoded parameters)
+Because your `ParameterRow` table has `ondelete="CASCADE"` pointing to `packets.id`, you only need to delete from `packets`. However, using `TRUNCATE` with `CASCADE` is the cleanest way to reset everything and reset the auto-incrementing IDs back to 1.
+
+```bash
+docker exec -it tm-postgres psql -U tm -d tmdb -c "TRUNCATE TABLE packets, parameters RESTART IDENTITY CASCADE;"
+```
+
+---
+
+### 3) Monitor the arrival of new packets (time-wise)
+Once you start your sender again, you can watch them arrive in real-time. 
+
+**Option A: Watch the last 10 packets arrive (live feed)**
+Run this, and every time a new packet is inserted, it will print to your terminal. It shows the timestamp and subsystem:
+```bash
+docker exec -it tm-postgres psql -U tm -d tmdb -c "SELECT ts, subsystem, card, seq FROM packets ORDER BY ts DESC LIMIT 10;"
+```
+*(You can run this command repeatedly to see the latest 10).*
+
+**Option B: Count how many arrive per second**
+If you want to see the rate of arrival (e.g., to check if they are arriving in bursts or evenly spaced), run this:
+```bash
+docker exec -it tm-postgres psql -U tm -d tmdb -c "
+  SELECT 
+    date_trunc('second', ts) AS arrival_second, 
+    count(*) AS packets_in_that_second 
+  FROM packets 
+  GROUP BY arrival_second 
+  ORDER BY arrival_second DESC 
+  LIMIT 20;
+"
+```
+
+**Option C: A continuous watch (Linux/Mac)**
+If you want a live-updating dashboard in your terminal, run:
+```bash
+watch -n 1 "docker exec -it tm-postgres psql -U tm -d tmdb -c \"SELECT count(*) AS total, max(ts) AS latest_packet FROM packets;\""
+```
+This will refresh every second, showing the total count growing and the timestamp of the most recent packet.

@@ -1,9 +1,11 @@
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { API_BASE } from "@/lib/api";
-import { Download, Database, RefreshCw, Loader2, ExternalLink, HardDriveDownload } from "lucide-react";
+import { Download, Database, RefreshCw, Loader2, HardDriveDownload } from "lucide-react";
 import { useStorageStore } from "@/store/storageStore";
+import { CompactPacketTable, type PacketLike } from "@/components/packets/CompactPacketTable";
+import { SubsystemFilter } from "@/components/packets/SubsystemFilter";
 
 interface PacketSummary {
   id: number;
@@ -12,7 +14,7 @@ interface PacketSummary {
   subsystem: string;
   card: string;
   crc_ok: boolean;
-  raw_hex?: string; // Added for export
+  raw_hex?: string;
 }
 
 export function StoragePage() {
@@ -21,28 +23,55 @@ export function StoragePage() {
     setStart, setEnd, setBusy, setPackets, setMsg
   } = useStorageStore();
 
-  async function query() {
+  const [selectedSubsystems, setSelectedSubsystems] = useState<string[]>([]);
+
+  const runQuery = useCallback(async () => {
     setBusy(true);
     setMsg("");
     try {
-      const r = await fetch(
-        `${API_BASE}/api/history?start=${new Date(start).toISOString()}&end=${new Date(end).toISOString()}&limit=2000`
-      );
+      const params = new URLSearchParams({
+        start: new Date(start).toISOString(),
+        end: new Date(end).toISOString(),
+        limit: "2000",
+      });
+      
+      if (selectedSubsystems.length > 0) {
+        params.set("subsystems", selectedSubsystems.join(","));
+      }
+
+      const r = await fetch(`${API_BASE}/api/history?${params.toString()}`);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = await r.json();
+      
       setPackets(j.packets ?? [], j.count ?? 0);
-      setMsg(`${j.count} packets in window`);
+      
+      if (selectedSubsystems.length > 0) {
+        setMsg(`${j.count} packets in window (filtered by ${selectedSubsystems.length} subsystem(s))`);
+      } else {
+        setMsg(`${j.count} packets in window`);
+      }
     } catch (e) {
       setMsg(`query failed: ${e}`);
     } finally {
       setBusy(false);
     }
-  }
+  }, [start, end, selectedSubsystems, setBusy, setPackets, setMsg]);
+
+  // Re-run automatically when the subsystem filter changes
+  useEffect(() => {
+    runQuery();
+  }, [runQuery]);
 
   async function exportCsv() {
-    const r = await fetch(
-      `${API_BASE}/api/history?start=${new Date(start).toISOString()}&end=${new Date(end).toISOString()}&limit=50000`
-    );
+    // ... (keep existing export code) ...
+    const params = new URLSearchParams({
+      start: new Date(start).toISOString(),
+      end: new Date(end).toISOString(),
+      limit: "50000",
+    });
+    if (selectedSubsystems.length > 0) params.set("subsystems", selectedSubsystems.join(","));
+
+    const r = await fetch(`${API_BASE}/api/history?${params.toString()}`);
     const j = await r.json();
     const rows = [
       ["ts", "apid", "subsystem", "card", "crc_ok"],
@@ -55,12 +84,18 @@ export function StoragePage() {
   }
 
   async function downloadBin() {
+    // ... (keep existing export code) ...
     setBusy(true);
     setMsg("Preparing export...");
     try {
-      const r = await fetch(
-        `${API_BASE}/api/history?start=${new Date(start).toISOString()}&end=${new Date(end).toISOString()}&limit=50000`
-      );
+      const params = new URLSearchParams({
+        start: new Date(start).toISOString(),
+        end: new Date(end).toISOString(),
+        limit: "50000",
+      });
+      if (selectedSubsystems.length > 0) params.set("subsystems", selectedSubsystems.join(","));
+
+      const r = await fetch(`${API_BASE}/api/history?${params.toString()}`);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = await r.json();
       
@@ -70,9 +105,8 @@ export function StoragePage() {
         return;
       }
 
-      // ⭐ Export as a JSON array containing { ts, raw_hex }
       const exportData = pkts.map((p: PacketSummary) => ({
-        ts: new Date(p.ts).getTime() / 1000, // Convert ISO string to Unix epoch (seconds)
+        ts: new Date(p.ts).getTime() / 1000,
         raw_hex: p.raw_hex
       }));
 
@@ -80,7 +114,7 @@ export function StoragePage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `tm-capture-${Date.now()}.json`; // <-- Changed extension
+      a.download = `tm-capture-${Date.now()}.json`;
       a.click();
       URL.revokeObjectURL(url);
       
@@ -98,13 +132,29 @@ export function StoragePage() {
 
   return (
     <div className="space-y-4">
-      <Card>
+      <Card className="relative z-[100]">
         <div className="flex items-center gap-2 mb-3">
           <Database className="w-4 h-4 text-accent-cyan" />
           <h3 className="text-sm font-semibold">TM Storage Explorer</h3>
         </div>
 
+        <div className="flex items-center gap-2 mb-4 relative z-[100]">
+          <SubsystemFilter
+            selected={selectedSubsystems}
+            onChange={setSelectedSubsystems}
+          />
+          {selectedSubsystems.length > 0 && (
+            <button
+              onClick={() => setSelectedSubsystems([])}
+              className="text-xs text-muted hover:underline"
+            >
+              Clear filter
+            </button>
+          )}
+        </div>
+
         <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-3 items-end">
+          {/* ... time inputs, buttons ... */}
           <div>
             <label className="text-[10px] uppercase text-muted block mb-1">From</label>
             <input
@@ -123,7 +173,7 @@ export function StoragePage() {
               className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 mono text-xs"
             />
           </div>
-          <Button onClick={query} disabled={busy} className="flex items-center gap-1.5">
+          <Button onClick={runQuery} disabled={busy} className="flex items-center gap-1.5">
             {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
             Query
           </Button>
@@ -139,78 +189,29 @@ export function StoragePage() {
       </Card>
 
       {packets.length > 0 && (
-        <Card>
+        /* ⭐ Ensure table Card has a lower z-index context */
+        <Card className="relative z-0">
           <div className="flex items-center justify-between mb-3">
             <div className="text-sm font-semibold">
               Results <span className="text-muted text-xs">({packets.length} packets shown)</span>
             </div>
-            {/* ⭐ UPPER LIMIT WARNING */}
             {totalInWindow > packets.length && (
               <div className="text-xs text-accent-amber">
-                Showing first {packets.length} of {totalInWindow.toLocaleString()} packets. 
-                (Download .bin will attempt to fetch all).
+                Showing first {packets.length} of {totalInWindow.toLocaleString()} packets.
               </div>
             )}
           </div>
           
-          <div className="overflow-auto max-h-[600px]">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-white/5 text-[10px] text-muted uppercase tracking-wider sticky top-0 bg-space-800">
-                  <th className="text-left py-2 px-2">Time</th>
-                  <th className="text-left py-2 px-2">Unit Sub ID</th>
-                  <th className="text-left py-2 px-2">Subsystem</th>
-                  <th className="text-left py-2 px-2">Card</th>
-                  <th className="text-right py-2 px-2">CRC</th>
-                  <th className="text-right py-2 px-2">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {packets.slice(0, 500).map((p) => (
-                  <tr
-                    key={p.id}
-                    className="border-b border-white/5 hover:bg-white/5 cursor-pointer"
-                    onClick={() => openStandalone(p.id)}
-                  >
-                    <td className="mono py-1.5 px-2 text-muted">
-                      {new Date(p.ts).toLocaleTimeString()}
-                    </td>
-                    <td className="mono py-1.5 px-2">
-                      0x{p.apid.toString(16).toUpperCase()}
-                    </td>
-                    <td className="py-1.5 px-2">{p.subsystem}</td>
-                    <td className="py-1.5 px-2 text-muted">{p.card}</td>
-                    <td className="py-1.5 px-2 text-right">
-                      <Badge variant={p.crc_ok ? "ok" : "crit"}>
-                        {p.crc_ok ? "OK" : "FAIL"}
-                      </Badge>
-                    </td>
-                    <td className="py-1.5 px-2 text-right">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openStandalone(p.id);
-                        }}
-                        className="text-accent hover:underline flex items-center gap-1 justify-end w-full"
-                        title="Open in new window"
-                      >
-                        <ExternalLink className="w-3 h-3" /> Inspect
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <CompactPacketTable
+            packets={packets as unknown as PacketLike[]}
+            onInspect={(p) => p.id != null && openStandalone(p.id)}
+            emptyMessage="No packets in window"
+            loading={busy}
+          />
         </Card>
       )}
     </div>
   );
-}
-
-function toLocalInput(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function downloadBlob(content: string, name: string, type: string) {

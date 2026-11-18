@@ -7,11 +7,19 @@ import { cn } from "@/lib/utils";
 import { packetId, type DecodedPacket } from "@/types/packet";
 
 interface Props {
-  filter?: { unit_sub_id?: number; service?: number; subservice?: number } | null;
+  filter?: {
+    unit_id?: number;
+    unit_sub_id?: number;
+    service?: number;
+    subservice?: number;
+  } | null;
+  overridePackets?: DecodedPacket[]; // ⭐ NEW
 }
 
-export function PacketListTable({ filter }: Props) {
-  const packets = useTelemetry((s) => s.packets);
+export function PacketListTable({ filter, overridePackets }: Props) {
+  // ⭐ Use overridePackets if provided, otherwise fall back to store
+  const storePackets = useTelemetry((s) => s.packets);
+  const packets = overridePackets ?? storePackets;
   const selectedId = useTelemetry((s) => s.selectedPacketId);
   const setSelectedId = useTelemetry((s) => s.setSelectedPacketId);
   const bookmarks = useTelemetry((s) => s.bookmarks);
@@ -44,13 +52,14 @@ export function PacketListTable({ filter }: Props) {
     let sorted = [...packets].reverse();
 
     // ⭐ Apply the subservice filter from the sidebar
-    if (filter) {
-      sorted = sorted.filter((p) =>
-        (filter.unit_sub_id === undefined || p.unit_sub_id === filter.unit_sub_id) &&
-        (filter.service === undefined || p.service_type === filter.service) &&
-        (filter.subservice === undefined || p.service_subtype === filter.subservice)
-      );
-    }
+    if (filter && !overridePackets) {
+    sorted = sorted.filter((p) =>
+      (filter.unit_id === undefined || p.unit_id === filter.unit_id) &&
+      (filter.unit_sub_id === undefined || p.unit_sub_id === filter.unit_sub_id) &&
+      (filter.service === undefined || p.service_type === filter.service) &&
+      (filter.subservice === undefined || p.service_subtype === filter.subservice)
+    );
+  }
 
     // Apply the search text filter
     if (search) {
@@ -64,7 +73,7 @@ export function PacketListTable({ filter }: Props) {
       );
     }
     return sorted;
-  }, [packets, search, filter]);
+  }, [packets, search, filter, overridePackets]);
 
   const totalPages = Math.ceil(filteredPackets.length / pageSize) || 1;
   const currentBatch = filteredPackets.slice(
@@ -185,7 +194,11 @@ export function PacketListTable({ filter }: Props) {
                     )}
                   </td>
                   <td className="px-3 py-1.5 mono text-secondary whitespace-nowrap">
-                    {new Date(p.timestamp * 1000).toLocaleTimeString()}
+                    {(() => {
+                      const d = new Date(p.timestamp * 1000);
+                      const pad = (n: number) => String(n).padStart(2, "0");
+                      return `${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${d.toLocaleTimeString()}.${String(d.getMilliseconds()).padStart(3, "0")}`;
+                    })()}
                   </td>
                   <td className="px-3 py-1.5 mono text-primary whitespace-nowrap">
                     0x{p.apid.toString(16).toUpperCase()}
