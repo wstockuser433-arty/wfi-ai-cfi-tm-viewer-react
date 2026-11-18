@@ -2,6 +2,11 @@ cd /home/hassan/Documents/Hassan/scc-work/wfi-ai-cfi-tm-viewer-react-oem-packets
 
 new commands
 
+python3 generate_frames.py ../../backend/app/tm_dictionary tm_frames.txt 10
+
+
+python3 replay_tm_frames.py tm_frames.txt -p /tmp/ttyV0 --interval 0.2
+
 Send everything
 
 ./send_ebox_serial.sh \
