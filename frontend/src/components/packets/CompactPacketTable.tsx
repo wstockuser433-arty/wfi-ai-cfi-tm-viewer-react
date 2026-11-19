@@ -6,6 +6,9 @@ export type PacketLike = {
   timestamp?: number;
   ts?: string;
   apid: number;
+  // ── EBOX-specific (optional; populated by the backend for EBOX packets) ──
+  unit_id?: number | null;
+  unit_sub_id?: number | null;
   subsystem?: string;
   card?: string;
   crc_ok?: boolean;
@@ -63,9 +66,10 @@ export function CompactPacketTable({
           <thead className="sticky top-0 bg-space-800 text-[11px] text-muted uppercase tracking-wider">
             <tr className="border-b border-white/5">
               <th className="text-left py-2 px-3">Time</th>
-              <th className="text-left py-2 px-3">APID</th>
+              {/* <th className="text-left py-2 px-3">APID</th> */}
               {/* <th className="text-left py-2 px-3">Subsystem</th> */}
               {/* <th className="text-left py-2 px-3">Card</th> */}
+              <th className="text-left py-2 px-3">Unit ID</th>
               <th className="text-left py-2 px-3">Seq</th>
               <th className="text-left py-2 px-3">Svc/Sub</th>
               <th className="text-left py-2 px-3">Card</th>
@@ -98,8 +102,10 @@ export function CompactPacketTable({
                   <td className="mono py-1.5 px-3 text-muted whitespace-nowrap">
                     {fmtTime(toMs(p))}
                   </td>
-                  <td className="mono py-1.5 px-3">
-                    {hex(p.apid)}
+                  <td className="mono py-1.5 px-3 whitespace-nowrap">
+                    {p.unit_id !== undefined && p.unit_id !== null
+                      ? `0x${p.unit_id.toString(16).toUpperCase()}`
+                      : "—"}
                   </td>
                   {/* <td className="py-1.5 px-3">{p.subsystem ?? "—"}</td> */}
                   {/* <td className="py-1.5 px-3 text-muted">{p.card ?? "—"}</td> */}

@@ -167,7 +167,8 @@ export function PacketListTable({ filter, overridePackets }: Props) {
             <tr>
               <th className="px-2 py-2 font-medium w-6"></th>
               <th className="px-3 py-2 font-medium">Time</th>
-              <th className="px-3 py-2 font-medium whitespace-nowrap">Service/Sub</th>
+              <th className="px-3 py-2 font-medium">Unit ID</th>
+              <th className="px-3 py-2 font-medium">Svc/Sub</th>
               <th className="px-3 py-2 font-medium">Card</th>
               <th className="px-3 py-2 font-medium text-right">CRC</th>
             </tr>
@@ -202,6 +203,11 @@ export function PacketListTable({ filter, overridePackets }: Props) {
                       const pad = (n: number) => String(n).padStart(2, "0");
                       return `${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${d.toLocaleTimeString()}.${String(d.getMilliseconds()).padStart(3, "0")}`;
                     })()}
+                  </td>
+                  <td className="px-3 py-1.5 mono text-primary whitespace-nowrap">
+                    {p.unit_id !== undefined && p.unit_id !== null
+                      ? `0x${p.unit_id.toString(16).toUpperCase()}`
+                      : "—"}
                   </td>
                   <td className="px-3 py-1.5 mono text-primary whitespace-nowrap">
                     {p.service_type !== undefined && p.service_type !== null

@@ -60,14 +60,24 @@ export function PacketDecoder() {
 
   if (!meta) return <Card>Loading meta…</Card>;
 
-function apidLabel(a: { apid: number; subsystem: string; card: string; unit_sub_id?: number; service?: number; subservice?: number }): string {
+function apidLabel(a: { apid: number; subsystem: string; card: string;
+                        unit_id?: number; unit_sub_id?: number;
+                        service?: number; subservice?: number }): string {
   const parts: string[] = [];
-  if (a.unit_sub_id !== undefined) parts.push(`Sub 0x${a.unit_sub_id.toString(16).toUpperCase()}`);
+  if (a.unit_id !== undefined) parts.push(`Unit 0x${a.unit_id.toString(16).toUpperCase()}`);
   if (a.service !== undefined) parts.push(`Svc 0x${a.service.toString(16).toUpperCase()}`);
   if (a.subservice !== undefined) parts.push(`SubSvc 0x${a.subservice.toString(16).toUpperCase()}`);
-  parts.push(`${a.subsystem}/${a.card}`);
+  parts.push(a.card);
   return parts.join(" · ");
-}
+}  
+// function apidLabel(a: { apid: number; subsystem: string; card: string; unit_sub_id?: number; service?: number; subservice?: number }): string {
+//   const parts: string[] = [];
+//   if (a.unit_sub_id !== undefined) parts.push(`Sub 0x${a.unit_sub_id.toString(16).toUpperCase()}`);
+//   if (a.service !== undefined) parts.push(`Svc 0x${a.service.toString(16).toUpperCase()}`);
+//   if (a.subservice !== undefined) parts.push(`SubSvc 0x${a.subservice.toString(16).toUpperCase()}`);
+//   parts.push(`${a.subsystem}/${a.card}`);
+//   return parts.join(" · ");
+// }
 
   return (
     <Card className="flex flex-col h-full">
