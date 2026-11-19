@@ -1,0 +1,55 @@
+unit:
+  id: 0x1A
+  label: "CAMERA"
+
+cards:
+  CAMERA_GNC_BROADCAST:
+    label: "GNC Broadcast"
+    unit_id: 0x1A
+    unit_sub_id: 0x10
+    service: 0x6A
+    subservice: 0x01
+    subsystem: CAMERA
+    hw_class: SW
+    fields:
+      # ─── Orbit epoch (Table 3, rows 1-2) ─────────────────────────
+      - { name: orbit_epoch_utc_sec,      offset: 0,  length: 4, type: u32, unit: s,  ltl: 700000000 }
+      - { name: orbit_epoch_utc_ms,       offset: 4,  length: 2, type: u16, unit: ms, ltl: 0, htl: 1000 }
+
+      # ─── Keplerian orbital elements (J2000) ──────────────────────
+      - { name: semi_major_axis_m,        offset: 6,  length: 4, type: f32, unit: m,   ltl: 6600000, htl: 8000000 }
+      - { name: eccentricity,             offset: 10, length: 4, type: f32, unit: "-", ltl: 0.0,    htl: 0.1 }
+      - { name: inclination_rad,          offset: 14, length: 4, type: f32, unit: rad, ltl: 0.0,    htl: 3.14159 }
+      - { name: raan_rad,                 offset: 18, length: 4, type: f32, unit: rad, ltl: 0.0,    htl: 6.28319 }
+      - { name: arg_perigee_rad,          offset: 22, length: 4, type: f32, unit: rad, ltl: 0.0,    htl: 6.28319 }
+      - { name: mean_anomaly_rad,         offset: 26, length: 4, type: f32, unit: rad, ltl: 0.0,    htl: 6.28319 }
+
+      # ─── Position in WGS84 (ECEF, metres) ────────────────────────
+      - { name: position_x_m,             offset: 30, length: 4, type: f32, unit: m,   ltl: -8000000, htl: 8000000 }
+      - { name: position_y_m,             offset: 34, length: 4, type: f32, unit: m,   ltl: -8000000, htl: 8000000 }
+      - { name: position_z_m,             offset: 38, length: 4, type: f32, unit: m,   ltl: -8000000, htl: 8000000 }
+
+      # ─── Velocity in WGS84 (ECEF, m/s) ───────────────────────────
+      - { name: velocity_x_mps,           offset: 42, length: 4, type: f32, unit: m/s, ltl: -8000, htl: 8000 }
+      - { name: velocity_y_mps,           offset: 46, length: 4, type: f32, unit: m/s, ltl: -8000, htl: 8000 }
+      - { name: velocity_z_mps,           offset: 50, length: 4, type: f32, unit: m/s, ltl: -8000, htl: 8000 }
+
+      # ─── Current body attitude (relative to orbital frame) ───────
+      - { name: roll_angle_rad,           offset: 54, length: 4, type: f32, unit: rad, ltl: -3.14159, htl: 3.14159 }
+      - { name: pitch_angle_rad,          offset: 58, length: 4, type: f32, unit: rad, ltl: -3.14159, htl: 3.14159 }
+      - { name: yaw_angle_rad,            offset: 62, length: 4, type: f32, unit: rad, ltl: -3.14159, htl: 3.14159 }
+
+      # ─── Current body angular velocity ───────────────────────────
+      - { name: roll_angular_velocity_radps,  offset: 66, length: 4, type: f32, unit: rad/s, ltl: -0.05, htl: 0.05 }
+      - { name: pitch_angular_velocity_radps, offset: 70, length: 4, type: f32, unit: rad/s, ltl: -0.05, htl: 0.05 }
+      - { name: yaw_angular_velocity_radps,   offset: 74, length: 4, type: f32, unit: rad/s, ltl: -0.05, htl: 0.05 }
+
+      # ─── Expected attitude (target) ──────────────────────────────
+      - { name: expected_roll_angle_rad,           offset: 78, length: 4, type: f32, unit: rad, ltl: -3.14159, htl: 3.14159 }
+      - { name: expected_pitch_angle_rad,          offset: 82, length: 4, type: f32, unit: rad, ltl: -3.14159, htl: 3.14159 }
+      - { name: expected_yaw_angle_rad,            offset: 86, length: 4, type: f32, unit: rad, ltl: -3.14159, htl: 3.14159 }
+
+      # ─── Expected angular velocity (target) ──────────────────────
+      - { name: expected_roll_angular_velocity_radps,  offset: 90,  length: 4, type: f32, unit: rad/s, ltl: -0.05, htl: 0.05 }
+      - { name: expected_pitch_angular_velocity_radps, offset: 94,  length: 4, type: f32, unit: rad/s, ltl: -0.05, htl: 0.05 }
+      - { name: expected_yaw_angular_velocity_radps,   offset: 98,  length: 4, type: f32, unit: rad/s, ltl: -0.05, htl: 0.05 }

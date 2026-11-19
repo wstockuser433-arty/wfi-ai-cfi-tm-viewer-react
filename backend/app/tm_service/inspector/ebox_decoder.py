@@ -54,6 +54,7 @@ TYPE_FMT = {
     "f32": "f", "f64": "d",
     "u8": "B", "u16": "H", "u24": None, "u32": "I", "u64": "Q",
     "i8": "b", "i16": "h", "i32": "i", "i64": "q",
+    "s8": "b", "s16": "h", "s32": "i", "s64": "q",
 }
 TYPE_SIZE = {
     "f32": 4, "f64": 8,
@@ -306,6 +307,16 @@ class EboxDecoder(PacketDecoder):
     def _status(v: float, spec: dict) -> str:
         ltl, htl = spec.get("ltl"), spec.get("htl")
         lth, hth = spec.get("lth"), spec.get("hth")
+        # Coerce any accidental string limits (e.g. "6.6e6") to float
+        def _num(x):
+            if x is None or isinstance(x, (int, float)):
+                return x
+            try:
+                return float(x)
+            except (TypeError, ValueError):
+                return None
+        ltl, htl = _num(ltl), _num(htl)
+        lth, hth = _num(lth), _num(hth)
         if ltl is None and htl is None:
             return "OK"
         if ltl is not None and v < ltl:

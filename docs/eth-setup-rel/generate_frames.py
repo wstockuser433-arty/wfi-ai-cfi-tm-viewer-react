@@ -51,7 +51,7 @@ def parse_yaml(path):
         m = INLINE_RE.match(raw)
         if m and cur is not None:
             flush(); body = m.group(1); f = {}
-                        # extract enum if present — try inline, then block, then quoted
+            # extract enum if present — try inline, then block, then quoted
             em = re.search(r"enum:\s*\{([^}]*)\}", body)
             if em:
                 try:
@@ -110,6 +110,17 @@ RANGES = {
     "o2_last_upl_ok_frames":     (0, 500),
     "o2_last_upl_bad_frames":    (0, 5),
 }
+
+# ⭐ Detection blocks — 23 detections per CDPM_R_AI_OBJECT packet.
+# lat_int / lon_int are signed (i8): degrees range −90..90 / −180..180
+for _n in range(23):
+    RANGES[f"det{_n}_obj_id"]    = (1, 5)
+    RANGES[f"det{_n}_conf"]      = (60, 100)         # confidence %
+    RANGES[f"det{_n}_slice_idx"] = (0, 7)
+    RANGES[f"det{_n}_lat_int"]   = (-90, 90)         # signed degree
+    RANGES[f"det{_n}_lat_frac"]  = (0, 65535)        # 16-bit fractional
+    RANGES[f"det{_n}_lon_int"]   = (-180, 180)       # signed degree
+    RANGES[f"det{_n}_lon_frac"]  = (0, 65535)
 
 def pick(card_key, f, seq):
     name, typ = f["name"], f["type"]

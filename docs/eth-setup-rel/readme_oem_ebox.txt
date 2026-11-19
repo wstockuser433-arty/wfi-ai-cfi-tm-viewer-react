@@ -1,11 +1,27 @@
+->Terminal-1
+conda activate scc
+cd /home/hassan/Documents/Hassan/scc-work/wfi-ai-cfi-tm-viewer-react-oem-packets/
+docker compose up -d postgres redis grafana
+cd backend/
+python run.py
+
+->Terminal-2
+conda activate scc
+cd /home/hassan/Documents/Hassan/scc-work/wfi-ai-cfi-tm-viewer-react-oem-packets/frontend
+npm run dev
+
+->New commands
+conda activate scc
 cd /home/hassan/Documents/Hassan/scc-work/wfi-ai-cfi-tm-viewer-react-oem-packets/docs/eth-setup-rel
 
-new commands
+python3 generate_frames.py ../../backend/app/tm_dictionary tm_frames_1.txt 10
 
-python3 generate_frames.py ../../backend/app/tm_dictionary tm_frames.txt 10
+python3 replay_tm_frames.py tm_frames_1.txt -p /tmp/ttyV0 --interval 0.2
 
 
-python3 replay_tm_frames.py tm_frames.txt -p /tmp/ttyV0 --interval 0.2
+-Delete everything on Postgres
+docker exec -it tm-postgres psql -U tm -d tmdb -c "TRUNCATE TABLE packets, parameters RESTART IDENTITY CASCADE;
+
 
 Send everything
 

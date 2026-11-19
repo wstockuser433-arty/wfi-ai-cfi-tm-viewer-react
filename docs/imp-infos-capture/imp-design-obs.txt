@@ -1,0 +1,6 @@
+One design consideration: 230 individual u8 fields is a lot
+The "Uplink Result" payload is essentially a 1840-bit bitmap (one bit per uplinked packet), packed as 230 bytes. Treating each byte as a u8 field gives you 230 parameter rows per packet in Postgres and 230 rows in the Inspector's decoded fields list — heavy but workable.
+
+If you want a leaner schema, you could decode only the first N words as sub-fields and expose the rest as a single hex blob. But since you want modularity and future-proofing, and the ICD specifies W1..W230 explicitly, the 230-u8 approach is the most faithful and requires zero extra logic. Keep it as-is.
+
+If, in the future, you want each bit (not byte) surfaced as its own field (e.g. result_w001.bit0, result_w001.bit1, …), you'd add bits: [{name: pkt_N, bit: 0}, ...] to each word — but that would produce 1840 fields per packet and would bury the Inspector UI. The byte-level view (result_word_NNN) is the right granularity for operational use; you can always expand a specific word in a future drill-down UI.
