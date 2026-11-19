@@ -64,10 +64,11 @@ export function CompactPacketTable({
             <tr className="border-b border-white/5">
               <th className="text-left py-2 px-3">Time</th>
               <th className="text-left py-2 px-3">APID</th>
-              <th className="text-left py-2 px-3">Subsystem</th>
-              <th className="text-left py-2 px-3">Card</th>
+              {/* <th className="text-left py-2 px-3">Subsystem</th> */}
+              {/* <th className="text-left py-2 px-3">Card</th> */}
               <th className="text-left py-2 px-3">Seq</th>
               <th className="text-left py-2 px-3">Svc/Sub</th>
+              <th className="text-left py-2 px-3">Card</th>
               <th className="text-left py-2 px-3">CRC</th>
               <th className="text-left py-2 px-3">Data</th>
               <th className="text-right py-2 px-3">Action</th>
@@ -100,14 +101,15 @@ export function CompactPacketTable({
                   <td className="mono py-1.5 px-3">
                     {hex(p.apid)}
                   </td>
-                  <td className="py-1.5 px-3">{p.subsystem ?? "—"}</td>
-                  <td className="py-1.5 px-3 text-muted">{p.card ?? "—"}</td>
+                  {/* <td className="py-1.5 px-3">{p.subsystem ?? "—"}</td> */}
+                  {/* <td className="py-1.5 px-3 text-muted">{p.card ?? "—"}</td> */}
                   <td className="mono py-1.5 px-3">{p.seq ?? "—"}</td>
-                  <td className="mono py-1.5 px-3">
+                  <td className="mono py-1.5 px-3 whitespace-nowrap">
                     {p.service_type != null
-                      ? `${p.service_type}/${p.service_subtype ?? "—"}`
+                      ? `0x${p.service_type.toString(16).toUpperCase()}/0x${(p.service_subtype ?? 0).toString(16).toUpperCase()}`
                       : "—"}
                   </td>
+                  <td className="py-1.5 px-3 text-slate-200">{p.card}</td>
                   <td className="py-1.5 px-3">
                     {p.crc_ok === undefined ? (
                       "—"

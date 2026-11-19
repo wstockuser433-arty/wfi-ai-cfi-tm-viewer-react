@@ -62,14 +62,17 @@ export function PacketListTable({ filter, overridePackets }: Props) {
   }
 
     // Apply the search text filter
-    if (search) {
+        if (search) {
       const q = search.toLowerCase();
       sorted = sorted.filter(
         (p) =>
-          p.apid.toString(16).toLowerCase().includes(q) ||
           p.subsystem.toLowerCase().includes(q) ||
           p.card.toLowerCase().includes(q) ||
-          `0x${p.apid.toString(16)}`.includes(q)
+          // Service/subservice as hex, e.g. "0x68/0x01"
+          (p.service_type !== undefined &&
+            `0x${p.service_type.toString(16)}`.toLowerCase().includes(q)) ||
+          (p.service_subtype !== undefined &&
+            `0x${p.service_subtype.toString(16)}`.toLowerCase().includes(q))
       );
     }
     return sorted;
@@ -119,7 +122,7 @@ export function PacketListTable({ filter, overridePackets }: Props) {
               setSearch(e.target.value);
               setPage(0);
             }}
-            placeholder={search === "" ? "Filter Sub-ID, subsystem…" : ""}
+            placeholder={search === "" ? "Filter service/sub, subsystem…" : ""}
             className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-1 text-xs text-slate-100 placeholder:text-muted/50 focus:outline-none focus:border-accent/40"
           />
         </div>
@@ -164,8 +167,8 @@ export function PacketListTable({ filter, overridePackets }: Props) {
             <tr>
               <th className="px-2 py-2 font-medium w-6"></th>
               <th className="px-3 py-2 font-medium">Time</th>
-              <th className="px-3 py-2 font-medium whitespace-nowrap">Unit Sub ID</th>
-              <th className="px-3 py-2 font-medium">Subsystem / Card</th>
+              <th className="px-3 py-2 font-medium whitespace-nowrap">Service/Sub</th>
+              <th className="px-3 py-2 font-medium">Card</th>
               <th className="px-3 py-2 font-medium text-right">CRC</th>
             </tr>
           </thead>
@@ -201,11 +204,12 @@ export function PacketListTable({ filter, overridePackets }: Props) {
                     })()}
                   </td>
                   <td className="px-3 py-1.5 mono text-primary whitespace-nowrap">
-                    0x{p.apid.toString(16).toUpperCase()}
+                    {p.service_type !== undefined && p.service_type !== null
+                      ? `0x${p.service_type.toString(16).toUpperCase()}/0x${(p.service_subtype ?? 0).toString(16).toUpperCase()}`
+                      : "—"}
                   </td>
-                  <td className="px-3 py-1.5 whitespace-nowrap">
-                    <span className="text-muted">{p.subsystem}</span> /{" "}
-                    <span className="text-slate-200">{p.card}</span>
+                  <td className="px-3 py-1.5 whitespace-nowrap text-slate-200">
+                    {p.card}
                   </td>
                   <td className="px-3 py-1.5 text-right">
                     <Badge variant={p.crc_ok ? "ok" : "crit"}>
