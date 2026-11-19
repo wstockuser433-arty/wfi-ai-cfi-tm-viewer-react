@@ -11,6 +11,13 @@ TYPES = {
     "i8": (">b", 1), "i16": (">h", 2), "i32": (">i", 4), "i64": (">q", 8),
     "f32": (">f", 4), "f64": (">d", 8),
 }
+# Sub-header overrides by card key
+SUB_HDR_OVERRIDES = {
+    "CDPM_R_AI_OBJECT": 0x03,
+    "CDPM_R_AI_DCDS":   0x02,
+    "CDPM_R_AI_OTA":    0x02,
+    "CDPM_R_AI_HEALTH": 0x02,
+}
 MAX_PAYLOAD = 238
 SEQ_FLAGS   = 0x03
 APID        = 0x2B
@@ -190,7 +197,11 @@ def make_frame(card, card_key, seq):
     sub   = int(card["unit_sub_id"])
     svc   = int(card["service"])
     ssub  = int(card["subservice"])
-    body  = bytes([SUB_HDR, uid, sub, svc, ssub]) + build_payload(card, card_key, seq)
+    
+    # ⭐ Lookup sub-header (defaults to 0x01 FAST_TM)
+    sub_hdr = SUB_HDR_OVERRIDES.get(card_key, SUB_HDR)
+    
+    body  = bytes([sub_hdr, uid, sub, svc, ssub]) + build_payload(card, card_key, seq)
     length_field = len(body) + 1 - 1
     w0 = (VERSION << 13) | (1 << 11) | APID
     w1 = (SEQ_FLAGS << 14) | (seq & 0x3FFF)
