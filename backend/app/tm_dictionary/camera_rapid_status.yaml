@@ -45,7 +45,7 @@ cards:
   # EBOX (0x1A / 0x10) → CTPU
   # Service 0x68 / Sub-Service 0x01
   # ══════════════════════════════════════════════════════════════
-  CAMERA_UNIT_STATUS:
+  CAMERA_RAPID_STATUS:
     label: "Rapid Change Camera Status"
     unit_id: 0x1A
     unit_sub_id: 0x10

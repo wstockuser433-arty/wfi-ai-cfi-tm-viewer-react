@@ -37,7 +37,7 @@ from ..registry_ebox import get_ebox_registry
 log = logging.getLogger(__name__)
 
 # ─── Fixed header values per ICD ────────────────────────────────────────
-EBOX_APID = 0x02B
+EBOX_APID = 0x0B2
 EBOX_VERSION = 0b010
 
 # ─── Header / sub-header offsets within the CCSDS-style packet ──────────

@@ -21,53 +21,61 @@ def read_frames(path):
     return frames
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("file")
-    ap.add_argument("-p", "--port", help="serial port (e.g. /tmp/ttyV0 or /dev/ttyUSB0)")
-    ap.add_argument("--udp", help="host:port instead of serial (e.g. 127.0.0.1:9200)")
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("file", help="text file containing hex-encoded frames")
+    destination = ap.add_mutually_exclusive_group(required=True)
+    destination.add_argument("-p", "--port", help="serial port (e.g. /tmp/ttyV0 or /dev/ttyUSB0)")
+    destination.add_argument("--udp", help="host:port instead of serial (e.g. 127.0.0.1:9200)")
     ap.add_argument("-b", "--baud", type=int, default=115200)
     ap.add_argument("-i", "--interval", type=float, default=0.1,
-                    help="seconds between frames (default 0.1)")
+                   help="seconds between frames (default 0.1)")
     ap.add_argument("--loop", action="store_true", help="loop forever")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args()
-
-    if not (args.port or args.udp):
-        sys.exit("specify -p <serial> or --udp <host:port>")
+    if args.interval <= 0:
+        ap.error("interval must be greater than zero")
+    if args.baud <= 0:
+        ap.error("baud must be greater than zero")
 
     frames = read_frames(args.file)
     print(f"Loaded {len(frames)} frames from {args.file}")
 
-    # open sink
-    if args.udp:
-        host, port = args.udp.rsplit(":", 1)
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.connect((host, int(port)))
-        def send(b): sock.send(b)
-        print(f"Sending UDP → {args.udp} @ {1/args.interval:.1f} fps")
-    else:
-        import serial
-        ser = serial.Serial(args.port, args.baud, timeout=0)
-        def send(b): ser.write(b); ser.flush()
-        print(f"Sending serial → {args.port} @ {args.baud} baud, {1/args.interval:.1f} fps")
-
-    sent, pass_no = 0, 0
+    sock = None
+    ser = None
     try:
+        if args.udp:
+            host, port_text = args.udp.rsplit(":", 1)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.connect((host, int(port_text)))
+            def send(frame): sock.send(frame)
+            print(f"Sending UDP → {args.udp} @ {1/args.interval:.1f} fps")
+        else:
+            import serial
+            ser = serial.Serial(args.port, args.baud, timeout=0)
+            def send(frame):
+                ser.write(frame)
+                ser.flush()
+            print(f"Sending serial → {args.port} @ {args.baud} baud, {1/args.interval:.1f} fps")
+
+        sent, pass_no = 0, 0
         while True:
             pass_no += 1
-            for i, f in enumerate(frames, 1):
-                send(f)
+            for i, frame in enumerate(frames, 1):
+                send(frame)
                 sent += 1
                 if args.verbose:
-                    print(f"[{sent}] pass {pass_no} frame {i}/{len(frames)}  {len(f)} B")
+                    print(f"[{sent}] pass {pass_no} frame {i}/{len(frames)}  {len(frame)} B")
                 time.sleep(args.interval)
             if not args.loop:
                 break
+        print(f"Sent {sent} frames in {pass_no} pass(es)")
     except KeyboardInterrupt:
-        print()
+        print("\nStopped by user.")
     finally:
-        if not args.udp: ser.close()
-    print(f"Sent {sent} frames in {pass_no} pass(es)")
+        if ser is not None:
+            ser.close()
+        if sock is not None:
+            sock.close()
 
 if __name__ == "__main__":
     main()

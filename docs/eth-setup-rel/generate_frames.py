@@ -1,93 +1,51 @@
 #!/usr/bin/env python3
+"""Generate full RS-422-wrapped TM frames from the telemetry YAML dictionaries.
+
+Supports inline and block YAML field definitions, enum/bitfield metadata, and
+calc-derived fields. Only raw fields are serialized (derived fields are skipped).
 """
-Generate tm_frames.txt: N full RS422-wrapped TM frames per card, one frame
-per line, ready for replay_tm_frames.py to feed to the serial sender.
-"""
-import math, random, struct, sys, zlib, re
+import argparse
+import math
+import struct
+import sys
+import zlib
 from pathlib import Path
 
+try:
+    import yaml
+except ImportError as exc:
+    sys.exit("PyYAML is required: install it with 'python3 -m pip install pyyaml'")
+
 TYPES = {
-    "u8": (">B", 1), "u16": (">H", 2), "u24": (None, 3), "u32": (">I", 4), "u64": (">Q", 8),
-    "i8": (">b", 1), "i16": (">h", 2), "i32": (">i", 4), "i64": (">q", 8),
-    "f32": (">f", 4), "f64": (">d", 8),
+    "u8": (">B", 1), "u16": (">H", 2), "u24": (None, 3),
+    "u32": (">I", 4), "u64": (">Q", 8),
+    "i8": (">b", 1), "i16": (">h", 2), "i32": (">i", 4),
+    "i64": (">q", 8), "f32": (">f", 4), "f64": (">d", 8),
 }
-# Sub-header overrides by card key
+
+MAX_PAYLOAD = 238
+SEQ_FLAGS = 0x03
+APID = 0xB2
+VERSION = 0x02
+OUTER_HEADER = bytes.fromhex("23232A2A")
+OUTER_TRAILER = bytes.fromhex("2A2A2323")
+DEFAULT_SUB_HDR = 0x01
+# Keep existing protocol-specific overrides; all other cards use FAST_TM 0x01.
 SUB_HDR_OVERRIDES = {
     "CDPM_R_AI_OBJECT": 0x02,
-    "CDPM_R_AI_DCDS":   0x02,
-    "CDPM_R_AI_OTA":    0x02,
+    "CDPM_R_AI_DCDS": 0x02,
+    "CDPM_R_AI_OTA": 0x02,
     "CDPM_R_AI_HEALTH": 0x02,
 }
-MAX_PAYLOAD = 238
-SEQ_FLAGS   = 0x03
-APID        = 0xB2
-VERSION     = 0x02
-OUTER_HEADER  = bytes.fromhex("23232A2A")
-OUTER_TRAILER = bytes.fromhex("2A2A2323")
-SUB_HDR       = 0x01   # fast TM
 
-# ─── tiny yaml reader (same subset as your sender) ────────────────────
-CARD_RE     = re.compile(r"^  ([A-Za-z0-9_]+):\s*(#.*)?$")
-ATTR_RE     = re.compile(r"^    (unit_sub_id|service|subservice|unit_id):\s*(\S+)")
-INLINE_RE   = re.compile(r"^\s+-\s*\{(.*)\}\s*(#.*)?$")
-BLOCK_START = re.compile(r"^\s+-\s+name:\s*(\S+)")
-BLOCK_ATTR  = re.compile(r"^\s+(\w+):\s*(.*?)\s*(#.*)?$")
-
-def scalar(s):
-    s = s.strip()
-    if s.startswith('"'): return s.strip('"')
-    try: return int(s, 0)
-    except ValueError:
-        try: return float(s)
-        except ValueError: return s
-
-def parse_yaml(path):
-    cards, cur, cur_field, in_cards = {}, None, None, False
-    def flush():
-        nonlocal cur_field
-        if cur_field and cur is not None: cur["fields"].append(cur_field)
-        cur_field = None
-    for raw in open(path).read().splitlines():
-        if raw.startswith("cards:"): in_cards = True; continue
-        if not in_cards or not raw.strip() or raw.lstrip().startswith("#"): continue
-        m = CARD_RE.match(raw)
-        if m: flush(); cur = cards[m.group(1)] = {"fields": []}; continue
-        m = ATTR_RE.match(raw)
-        if m and cur is not None and cur_field is None:
-            cur[m.group(1)] = scalar(m.group(2)); continue
-        m = INLINE_RE.match(raw)
-        if m and cur is not None:
-            flush(); body = m.group(1); f = {}
-            # extract enum if present — try inline, then block, then quoted
-            em = re.search(r"enum:\s*\{([^}]*)\}", body)
-            if em:
-                try:
-                    f["enum"] = {int(k): v for k, v in
-                                 re.findall(r'(\d+)\s*:\s*"?([A-Za-z0-9_\- ]+)"?',
-                                            em.group(1))}
-                except Exception:
-                    pass
-                body = body[:em.start()] + body[em.end():]
-            for k, v in re.findall(r'(\w+)\s*:\s*("[^"]*"|[^,]+)', body):
-                f[k] = scalar(v)
-            if all(k in f for k in ("name","offset","type")):
-                cur["fields"].append(f)
-        m = BLOCK_START.match(raw)
-        if m and cur is not None: flush(); cur_field = {"name": m.group(1)}; continue
-        m = BLOCK_ATTR.match(raw)
-        if m and cur_field is not None: cur_field[m.group(1)] = scalar(m.group(2))
-    flush()
-    return cards
-
-# ─── value generator ──────────────────────────────────────────────────
 ENUM_DEFAULTS = {
     "cam_clock_locked": 1, "cam_lvds_locked": 1, "ai_health_status": 0,
-    "thcc_control_loop_state": 1, "pwr_overcurrent_fault": 0, "pwr_efuse_state": 1,
-    "unit_mode": 2, "o2_board_mode": 1, "o2_training_status": 0,
-    "startup_status": 0, "image_slot_state": 0,
-    "ota_checksum_ok": 1, "ota_rebuild_ok": 1,
-    "can_bus_a_state": 1, "can_bus_b_state": 1,
-    "o2_prev_model_type": 0, "o2_curr_model_type": 0,
+    "thcc_control_loop_state": 1, "pwr_overcurrent_fault": 0,
+    "pwr_efuse_state": 1, "unit_mode": 2, "o2_board_mode": 1,
+    "o2_training_status": 0, "startup_status": 0, "image_slot_state": 0,
+    "ota_checksum_ok": 1, "ota_rebuild_ok": 1, "can_bus_a_state": 1,
+    "can_bus_b_state": 1, "o2_prev_model_type": 0, "o2_curr_model_type": 0,
+    "upload_file_check": 0, "target_alg_run_status": 0,
 }
 FIXED = {
     "pwr_uv_ov_status": 0, "ppc_fault_flags": 0, "ai_model_id": 1,
@@ -100,135 +58,151 @@ FIXED = {
     "tm_forwarding_mask_applied": 0x0F, "tm_forwarding_mask_requested": 0x0F,
 }
 RANGES = {
-    # CDPM_AI health counters — realistic climbing values
-    "o2_fpga_rx_count":          (1000, 2000),
-    "o2_health_req_rx_count":    (10, 50),
-    "o2_health_rep_tx_count":    (10, 50),
-    "o2_obj_req_rx_count":       (10, 50),
-    "o2_obj_rep_tx_count":       (10, 50),
-    "o2_total_tc_rx":            (100, 500),
-    "o2_total_tm_tx":            (100, 500),
-    "o2_num_models":             (1, 3),
-    "o2_cpu_temp_int":           (30, 60),
-    "o2_cpu_util_int":           (10, 80),
-    "o2_nvme_used":              (10, 50),
-    "o2_num_images_onboard":     (100, 2000),
-    "o2_unsuccessful_cmd_count": (0, 5),
-    "o2_last_upl_ok_frames":     (0, 500),
-    "o2_last_upl_bad_frames":    (0, 5),
+    "o2_fpga_rx_count": (1000, 2000), "o2_health_req_rx_count": (10, 50),
+    "o2_health_rep_tx_count": (10, 50), "o2_obj_req_rx_count": (10, 50),
+    "o2_obj_rep_tx_count": (10, 50), "o2_total_tc_rx": (100, 500),
+    "o2_total_tm_tx": (100, 500), "o2_num_models": (1, 3),
+    "o2_cpu_temp_int": (30, 60), "o2_cpu_util_int": (10, 80),
+    "o2_nvme_used": (10, 50), "o2_num_images_onboard": (100, 2000),
+    "o2_unsuccessful_cmd_count": (0, 5), "o2_last_upl_ok_frames": (0, 500),
+    "o2_last_upl_bad_frames": (0, 5),
+    "fpga_board_temp_c": (35, 55), "fpga_cpu_temp_c": (35, 55),
+    "ai_cpu_temp_c": (35, 60), "ai_gpu_temp_c": (35, 65),
+    "gpu_st1_temp_c": (30, 50), "gpu_st2_temp_c": (30, 50),
+    "power_conv_chip_temp_raw": (1000, 2500),
+    "ltm8051_temp_raw": (1000, 2500), "ddr_memory_temp_raw": (1000, 2500),
+    "m2s090_temp_raw": (1000, 2500),
 }
+for i in range(23):
+    RANGES.update({f"det{i}_obj_id": (1, 5), f"det{i}_conf": (60, 100),
+                  f"det{i}_slice_idx": (0, 7), f"det{i}_lat_int": (-90, 90),
+                  f"det{i}_lat_frac": (0, 65535), f"det{i}_lon_int": (-180, 180),
+                  f"det{i}_lon_frac": (0, 65535)})
 
-# ⭐ Detection blocks — 23 detections per CDPM_R_AI_OBJECT packet.
-# lat_int / lon_int are signed (i8): degrees range −90..90 / −180..180
-for _n in range(23):
-    RANGES[f"det{_n}_obj_id"]    = (1, 5)
-    RANGES[f"det{_n}_conf"]      = (60, 100)         # confidence %
-    RANGES[f"det{_n}_slice_idx"] = (0, 7)
-    RANGES[f"det{_n}_lat_int"]   = (-90, 90)         # signed degree
-    RANGES[f"det{_n}_lat_frac"]  = (0, 65535)        # 16-bit fractional
-    RANGES[f"det{_n}_lon_int"]   = (-180, 180)       # signed degree
-    RANGES[f"det{_n}_lon_frac"]  = (0, 65535)
 
-def pick(card_key, f, seq):
-    name, typ = f["name"], f["type"]
+def load_cards(yaml_dir):
+    cards = {}
+    for path in sorted(Path(yaml_dir).glob("*.yaml")):
+        data = yaml.safe_load(path.read_text()) or {}
+        for key, card in (data.get("cards") or {}).items():
+            fields = card.get("fields") or []
+            if fields:
+                cards[key] = card
+    return cards
 
-    # ── enum handling (defensive against unparsed string form) ─────
-    enum = f.get("enum")
-    if isinstance(enum, dict) and enum:
-        v = ENUM_DEFAULTS.get(name)
-        if v is not None and v in enum:
-            return v
-        return min(enum.keys())
-    elif isinstance(enum, str):
-        # e.g. enum landed here as a raw string — try to parse it now
-        m = re.search(r"\{([^}]*)\}", enum)
-        if m:
-            try:
-                pairs = {int(k): val for k, val in
-                         re.findall(r'(\d+)\s*:\s*"?([A-Za-z0-9_\- ]+)"?', m.group(1))}
-                if pairs:
-                    v = ENUM_DEFAULTS.get(name)
-                    if v is not None and v in pairs:
-                        return v
-                    return min(pairs.keys())
-            except Exception:
-                pass
-        # couldn't parse — fall through to numeric default
 
+
+def enum_values(enum):
+    if isinstance(enum, dict):
+        out = {}
+        for k, v in enum.items():
+            try: out[int(k)] = v
+            except (TypeError, ValueError): pass
+        return out
+    return {}
+
+
+
+def pick(card_key, field, seq):
+    name, typ = field["name"], field["type"]
+    enums = enum_values(field.get("enum"))
+    if enums:
+        preferred = ENUM_DEFAULTS.get(name)
+        return preferred if preferred in enums else min(enums)
     if name in FIXED:
         return FIXED[name]
     if name in RANGES:
         lo, hi = RANGES[name]
-        mid, half = (lo + hi) / 2, (hi - lo) / 2
-        h = zlib.crc32(f"{card_key}:{name}".encode())
-        return int(round(mid + half * math.sin(seq / 20.0 + (h % 360) * math.pi / 180)))
+        midpoint, amplitude = (lo + hi) / 2, (hi - lo) / 2
+        phase = (zlib.crc32(f"{card_key}:{name}".encode()) % 360) * math.pi / 180
+        return int(round(midpoint + amplitude * math.sin(seq / 20.0 + phase)))
     if name.startswith("terrain_elevation_"):
-        h = zlib.crc32(name.encode())
-        return 250 + int(240 * math.sin(seq / 20.0 + (h % 360) * math.pi / 180))
+        phase = (zlib.crc32(name.encode()) % 360) * math.pi / 180
+        return 250 + int(240 * math.sin(seq / 20.0 + phase))
     if name.startswith(("acb_", "acs_")):
-        h = zlib.crc32(name.encode())
-        return 2.0 * math.sin(seq / 30.0 + (h % 360) * math.pi / 180)
-    if f.get("unit") == "cnt":
+        phase = (zlib.crc32(name.encode()) % 360) * math.pi / 180
+        return 2.0 * math.sin(seq / 30.0 + phase)
+    if field.get("unit") == "cnt":
         return seq % 255
+    # Status/bitfield values default to zero unless explicitly configured above.
     return 0.0 if typ in ("f32", "f64") else 0
 
+
+
+def raw_fields(card):
+    return [f for f in card.get("fields", [])
+            if f.get("type") in TYPES and "calc" not in f and "offset" in f]
+
+
+
 def build_payload(card, card_key, seq):
-    physical = [f for f in card["fields"] if f["type"] in TYPES and "calc" not in f]
-    if not physical:
-        return b"\x00" * MAX_PAYLOAD
-    size = max(f["offset"] + TYPES[f["type"]][1] for f in physical)
+    fields = raw_fields(card)
+    if not fields:
+        return bytes(MAX_PAYLOAD)
+    size = max(f["offset"] + TYPES[f["type"]][1] for f in fields)
+    if size > MAX_PAYLOAD:
+        raise ValueError(f"{card_key}: payload size {size} exceeds {MAX_PAYLOAD} bytes")
     buf = bytearray(size)
-    for f in physical:
-        typ = f["type"]
-        fmt, n = TYPES[typ]
-        v = pick(card_key, f, seq)
+    for f in fields:
+        typ, n = f["type"], TYPES[f["type"]][1]
+        value = pick(card_key, f, seq)
         if typ == "u24":
-            iv = int(v) & 0xFFFFFF
-            raw = bytes([(iv >> 16) & 0xFF, (iv >> 8) & 0xFF, iv & 0xFF])
+            v = int(value) & 0xFFFFFF
+            raw = bytes([(v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF])
         else:
-            raw = struct.pack(fmt, v)
-        buf[f["offset"]:f["offset"] + n] = raw
+            fmt = TYPES[typ][0]
+            try: raw = struct.pack(fmt, value)
+            except (struct.error, OverflowError) as exc:
+                raise ValueError(f"{card_key}.{f['name']}: value {value!r} does not fit {typ}") from exc
+        start = f["offset"]
+        buf[start:start+n] = raw
     return bytes(buf).ljust(MAX_PAYLOAD, b"\x00")
 
-def checksum8(b): return sum(b) & 0xFF
+
+def checksum8(data):
+    return sum(data) & 0xFF
+
+
 
 def make_frame(card, card_key, seq):
-    uid   = int(card["unit_id"])
-    sub   = int(card["unit_sub_id"])
-    svc   = int(card["service"])
-    ssub  = int(card["subservice"])
-    
-    # ⭐ Lookup sub-header (defaults to 0x01 FAST_TM)
-    sub_hdr = SUB_HDR_OVERRIDES.get(card_key, SUB_HDR)
-    
-    body  = bytes([sub_hdr, uid, sub, svc, ssub]) + build_payload(card, card_key, seq)
-    length_field = len(body) + 1 - 1
+    uid, sub = int(card["unit_id"]), int(card["unit_sub_id"])
+    svc, ssub = int(card["service"]), int(card["subservice"])
+    sub_hdr = SUB_HDR_OVERRIDES.get(card_key, DEFAULT_SUB_HDR)
+    body = bytes([sub_hdr, uid, sub, svc, ssub]) + build_payload(card, card_key, seq)
+    length_field = len(body)
     w0 = (VERSION << 13) | (1 << 11) | APID
     w1 = (SEQ_FLAGS << 14) | (seq & 0x3FFF)
     inner = struct.pack(">HHH", w0, w1, length_field) + body
     return OUTER_HEADER + inner + bytes([checksum8(inner)]) + OUTER_TRAILER
 
+
+
 def main():
-    yaml_dir = Path(sys.argv[1] if len(sys.argv) > 1 else "../../backend/app/tm_dictionary")
-    out      = Path(sys.argv[2] if len(sys.argv) > 2 else "tm_frames.txt")
-    rounds   = int(sys.argv[3]) if len(sys.argv) > 3 else 10
-
-    cards = {}
-    for p in sorted(yaml_dir.glob("*.yaml")):
-        for k, c in parse_yaml(p).items():
-            if c.get("fields"): cards[k] = c
-
-    with open(out, "w") as fh:
-        n = 0
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("yaml_dir", nargs="?", default="../../backend/app/tm_dictionary",
+                   help="directory containing TM dictionary YAML files")
+    ap.add_argument("output", nargs="?", default="tm_frames.txt")
+    ap.add_argument("rounds", nargs="?", type=int, default=10,
+                   help="number of frames per card (default: 10)")
+    args = ap.parse_args()
+    if args.rounds <= 0:
+        ap.error("rounds must be a positive integer")
+    cards = load_cards(args.yaml_dir)
+    if not cards:
+        ap.error(f"no telemetry cards with fields found in {args.yaml_dir}")
+    out = Path(args.output)
+    total = 0
+    with out.open("w") as fh:
         for key in sorted(cards):
-            fh.write(f"# ===== {key}  (unit=0x{int(cards[key]['unit_id']):02X} "
-                     f"sub=0x{int(cards[key]['unit_sub_id']):02X} "
-                     f"svc=0x{int(cards[key]['service']):02X} "
-                     f"subsvc=0x{int(cards[key]['subservice']):02X}) =====\n")
-            for seq in range(rounds):
-                fh.write(make_frame(cards[key], key, seq).hex().upper() + "\n")
-                n += 1
-    print(f"Wrote {n} frames ({len(cards)} cards × {rounds} rounds) → {out}")
+            card = cards[key]
+            for required in ("unit_id", "unit_sub_id", "service", "subservice"):
+                if required not in card:
+                    raise ValueError(f"{key}: missing required card metadata {required}")
+            fh.write(f"# ===== {key} (unit=0x{int(card['unit_id']):02X} sub=0x{int(card['unit_sub_id']):02X} svc=0x{int(card['service']):02X} subsvc=0x{int(card['subservice']):02X}) =====\n")
+            for seq in range(args.rounds):
+                fh.write(make_frame(card, key, seq).hex().upper() + "\n")
+                total += 1
+    print(f"Wrote {total} frames ({len(cards)} cards × {args.rounds} rounds) → {out}")
 
 if __name__ == "__main__":
     main()
