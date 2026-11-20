@@ -7,7 +7,7 @@ cards:
     label: "Uplink Result 2 (Packets 1841-3680)"
     unit_id: 0x1A
     unit_sub_id: 0x10
-    service: 0x68
+    service: 0x66
     subservice: 0x05
     subsystem: CAMERA
     hw_class: SW

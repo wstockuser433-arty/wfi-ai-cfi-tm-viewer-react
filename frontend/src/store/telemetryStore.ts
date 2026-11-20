@@ -9,6 +9,8 @@ export type LinkState = "connected" | "connecting" | "disconnected";
 
 export interface Alarm {
   id: string;
+  db_id?: number;        // ⭐ for DB-sourced alarms
+  packet_id?: number;    // ⭐ link to the packet that triggered it
   ts: number;
   severity: "WARN" | "CRIT";
   subsystem: string;

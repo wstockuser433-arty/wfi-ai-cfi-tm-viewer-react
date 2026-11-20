@@ -3,6 +3,8 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from redis.asyncio import Redis
 
+from ...db.models.alarm import AlarmRow
+
 from ...schemas.packet import DecodedPacket
 from ...db.models.packet import PacketRow
 from ...db.models.parameter import ParameterRow
@@ -54,3 +56,19 @@ class StorageWriter:
                 status=f.status,
                 raw_json=json.dumps(f.value) if not isinstance(f.value, (int, float)) else None,
             ))
+
+            # ⭐ 2. NEW: Save Alarm to Postgres
+            if f.status in ("WARN", "CRIT"):
+                ltl = f.limits[0] if f.limits[0] is not None else "—"
+                htl = f.limits[1] if f.limits[1] is not None else "—"
+                msg = f"{packet.subsystem}/{packet.card}.{name} = {f.value}{f.unit or ''} (limits {ltl}–{htl})"
+                
+                db.add(AlarmRow(
+                    ts=datetime.fromtimestamp(packet.timestamp, tz=timezone.utc),
+                    severity=f.status,
+                    subsystem=packet.subsystem,
+                    card=packet.card,
+                    param_name=name,
+                    message=msg,
+                    packet_id=row.id
+                ))

@@ -2,11 +2,21 @@
 EBOX Calculated Fields
 ======================
 
-Helper functions for the `calc:` fields in ebox.yaml. Each function
+Helper functions for the `calc:` fields in the TM dictionary YAMLs
+(ebox.yaml, camera_status.yaml, camera_slow_status.yaml). Each function
 takes the raw unsigned integer D from the referenced `calc_from` field
 and returns the physical value.
 
-Every formula here is transcribed verbatim from ICD v1.2 Table 49.
+Sources
+-------
+* Rapid-change status functions: ICD v1.2 Table 49.
+* Slow-change status functions:   parsing-formulas-slow.docx
+  (V_5V_SCALE, TDI_FRAME_PERIOD_NS, CMOS_EXPOSURE_US), plus
+  TEMP_SETPOINT and GRATING_POSITION_NM from Table 49.
+
+Formulas are transcribed from the ICD, with one exception noted in
+TEMP_NTC. Every name used as `calc:` in any YAML must be a key of
+CALC_FUNCS (registry_ebox.py rejects unknown names at load time).
 """
 
 from __future__ import annotations
@@ -22,7 +32,8 @@ def SIGNED_16(D: int) -> int:
 # ─── Linear Voltages & Currents ─────────────────────────────────────────
 def V_5V_SCALE(D: int) -> float:
     """
-    Voltage parsing (ICD W103–W120).
+    Voltage parsing.
+      Rapid status: ICD W103-W120.   Slow status: ICD W4-W21 (9 fields).
     Formula: Voltage = D / 4095 * 5
     """
     return (D / 4095.0) * 5.0
@@ -74,18 +85,19 @@ def TEMP_M2S090(D: int) -> float:
 def TEMP_NTC(D: int) -> float:
     """
     Primary & backup thermistor channels (ICD W28–W55).
-    Formula:
+    ICD text:
       R = 10 * D / (4095 - D)
-      T (°C) = 1 / ((1 / 298.15) + (ln(R) / 4100)) - 273.15
+      T (°C) = 1 / ((1 / 298.15) + (ln(R) / 4100)) - 273.15   ("to be modified later")
+    NOTE: this is NOT verbatim. The ICD's ln(R) only gives 25 °C when
+    R = 1, but R here is in kΩ for a 10 kΩ NTC (R = 10 at 25 °C), so
+    ln(R/10) is used (B = 4100 K, T0 = 298.15 K). Confirm with the EBOX team.
     """
     if D >= 4095:
-        return float("nan")  # Protect against divide-by-zero
-    
-    r_val = (10.0 * D) / (4095.0 - D)
+        return float("nan")
+    r_val = (10.0 * D) / (4095.0 - D)   # kΩ
     if r_val <= 0:
-        return float("nan")  # Protect against log of non-positive numbers
-        
-    t_kelvin = 1.0 / ((1.0 / 298.15) + (math.log(r_val) / 4100.0))
+        return float("nan")
+    t_kelvin = 1.0 / ((1.0 / 298.15) + (math.log(r_val / 10.0) / 4100.0))
     return t_kelvin - 273.15
 
 
@@ -105,6 +117,43 @@ def TEMP_FPGA_MODULE(D: int) -> float:
     return ((D / 16.0) * 503.975 / 4096.0) - 273.15
 
 
+# ─── Camera slow-change status (camera_slow_status.yaml) ───────────────
+def TDI_FRAME_PERIOD_NS(D: int) -> int:
+    """
+    TDI frame period of imaging module 1/2 (slow ICD W82-W84, W120-W122).
+    Formula: X = W<<16 + W<<8 + W (u24), Frame period = X * 100 ns
+    """
+    return D * 100
+
+
+def CMOS_EXPOSURE_US(D: int) -> int:
+    """
+    CMOS exposure time of imaging module 1/2 (slow ICD W85-W87, W123-W125).
+    Formula: X = W<<16 + W<<8 + W (u24), Exposure time = 20 us + (X * 2)
+    (ICD gives no unit on X*2; microseconds assumed, consistent with the
+    ICD default "112 us".)
+    """
+    return 20 + (D * 2)
+
+
+def TEMP_SETPOINT(D: int) -> float:
+    """
+    Heating-channel temperature setting (slow ICD W32-W43; Table 49 W131-W137).
+    Byte layout: Bit7 primary/backup channel, Bit6 abnormality flag,
+    Bit5-0 setting. Formula: Current temperature = setting / 2.
+    Flag bits are masked off.
+    """
+    return (D & 0x3F) / 2.0
+
+
+def GRATING_POSITION_NM(D: int) -> int:
+    """
+    Current grating scale reading (slow ICD W69-W71; Table 49 W155-W157).
+    Formula: Current position = code value * 20 nm
+    """
+    return D * 20
+
+
 # ─── Calculator Dispatch Table ────────────────────────────────────────
 CALC_FUNCS: dict[str, callable] = {
     "V_5V_SCALE":           V_5V_SCALE,
@@ -115,8 +164,13 @@ CALC_FUNCS: dict[str, callable] = {
     "TEMP_M2S090":          TEMP_M2S090,
     "TEMP_NTC":             TEMP_NTC,
     "SIGNED_16":            SIGNED_16,
-    "TEMP_CHANNEL":         TEMP_CHANNEL_1,
+    "TEMP_CHANNEL_1":       TEMP_CHANNEL_1,
+    # "TEMP_CHANNEL":         TEMP_CHANNEL_1,   # alias: camera_status.yaml uses this name
     "TEMP_FPGA_MODULE":     TEMP_FPGA_MODULE,
+    "TDI_FRAME_PERIOD_NS":  TDI_FRAME_PERIOD_NS,
+    "CMOS_EXPOSURE_US":     CMOS_EXPOSURE_US,
+    "TEMP_SETPOINT":        TEMP_SETPOINT,
+    "GRATING_POSITION_NM":  GRATING_POSITION_NM,
 }
 
 

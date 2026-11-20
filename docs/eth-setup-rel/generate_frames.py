@@ -13,14 +13,14 @@ TYPES = {
 }
 # Sub-header overrides by card key
 SUB_HDR_OVERRIDES = {
-    "CDPM_R_AI_OBJECT": 0x03,
+    "CDPM_R_AI_OBJECT": 0x02,
     "CDPM_R_AI_DCDS":   0x02,
     "CDPM_R_AI_OTA":    0x02,
     "CDPM_R_AI_HEALTH": 0x02,
 }
 MAX_PAYLOAD = 238
 SEQ_FLAGS   = 0x03
-APID        = 0x2B
+APID        = 0xB2
 VERSION     = 0x02
 OUTER_HEADER  = bytes.fromhex("23232A2A")
 OUTER_TRAILER = bytes.fromhex("2A2A2323")

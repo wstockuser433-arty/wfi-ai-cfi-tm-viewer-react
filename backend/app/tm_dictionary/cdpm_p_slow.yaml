@@ -1,0 +1,76 @@
+unit:
+  id: 0x1A
+  label: "CDPM_P"
+
+cards:
+  CDPM_P_SLOW:
+    label: "AI Module Slow TM"
+    unit_id: 0x1A
+    unit_sub_id: 0x10
+    service: 0x66
+    subservice: 0x11
+    subsystem: CDPM_P
+    hw_class: SW
+    fields:
+      # ─── Header (W1..W10, rows 16-22) ────────────────────────────
+      - { name: utc_time_sec,              offset: 0,  length: 4, type: u32, unit: s }
+      - { name: slow_varying_count,        offset: 4,  length: 1, type: u8, unit: cnt }
+      - { name: fpga_sw_version,           offset: 5,  length: 1, type: u8, unit: "-" }
+      - { name: fpga_fw_version,           offset: 6,  length: 1, type: u8, unit: "-" }
+      - { name: fpga_log_seq,              offset: 7,  length: 1, type: u8, unit: "-" }
+      - { name: gpu_sw_version,            offset: 8,  length: 1, type: u8, unit: "-" }
+      - { name: gpu_log_seq,               offset: 9,  length: 1, type: u8, unit: "-" }
+
+      # ─── FPGA health (W11..W20, rows 23-28) ──────────────────────
+      - { name: fpga_board_temp_c,         offset: 10, length: 1, type: i8,  unit: "°C" }
+      - { name: fpga_free_memory_mb,       offset: 11, length: 2, type: u16, unit: MB }
+      - { name: fpga_cpu_util_pct,         offset: 13, length: 1, type: u8,  unit: "%" }
+      - { name: fpga_mdata_free_mb,        offset: 14, length: 2, type: u16, unit: MB }
+      - { name: fpga_disk1_free_mb,        offset: 16, length: 2, type: u16, unit: MB }
+      - { name: fpga_disk2_free_mb,        offset: 18, length: 2, type: u16, unit: MB }
+
+      # ─── FPGA uptime + reserved (W21..W36, rows 29-33) ───────────
+      - { name: fpga_uptime_s,             offset: 20, length: 4, type: u32, unit: s }
+      - { name: fpga_res1,                 offset: 24, length: 2, type: u16, unit: "-" }
+      - { name: fpga_res2,                 offset: 26, length: 2, type: u16, unit: "-" }
+      - { name: fpga_res3,                 offset: 28, length: 4, type: u32, unit: "-" }
+      - { name: fpga_res4,                 offset: 32, length: 4, type: u32, unit: "-" }
+
+      # ─── GPU health (W37..W45, rows 34-38) ───────────────────────
+      - { name: gpu_uptime_s,              offset: 36, length: 4, type: u32, unit: s }
+      - { name: gpu_free_memory_mb,        offset: 40, length: 2, type: u16, unit: MB }
+      - { name: gpu_cpu_util_pct,          offset: 42, length: 1, type: u8,  unit: "%" }
+      - { name: ai_cpu_temp_c,             offset: 43, length: 1, type: i8,  unit: "°C" }
+      - { name: ai_gpu_temp_c,             offset: 44, length: 1, type: i8,  unit: "°C" }
+
+      # ─── GPU storage 1 (W46..W58, rows 39-44) ────────────────────
+      - { name: gpu_st1_mon1,              offset: 45, length: 1, type: u8,  unit: "-" }
+      - { name: gpu_st1_mon2,              offset: 46, length: 4, type: u32, unit: "-" }
+      - { name: gpu_st1_mon3,              offset: 50, length: 4, type: u32, unit: "-" }
+      - { name: gpu_st1_temp_c,            offset: 54, length: 1, type: i8,  unit: "°C" }
+      - { name: gpu_st1_identifier,        offset: 55, length: 1, type: u8,  unit: "-" }
+      - { name: gpu_st1_res,               offset: 56, length: 2, type: u16, unit: "-" }
+
+      # ─── GPU storage 2 (W59..W71, rows 45-50) ────────────────────
+      - { name: gpu_st2_mon1,              offset: 58, length: 1, type: u8,  unit: "-" }
+      - { name: gpu_st2_mon2,              offset: 59, length: 4, type: u32, unit: "-" }
+      - { name: gpu_st2_mon3,              offset: 63, length: 4, type: u32, unit: "-" }
+      - { name: gpu_st2_temp_c,            offset: 67, length: 1, type: i8,  unit: "°C" }
+      - { name: gpu_st2_identifier,        offset: 68, length: 1, type: u8,  unit: "-" }
+      - { name: gpu_st2_res,               offset: 69, length: 2, type: u16, unit: "-" }
+
+      # ─── GPU storage / disks (W72..W77, rows 51-53) ──────────────
+      - { name: gpu_emmc_free_mb,          offset: 71, length: 2, type: u16, unit: MB }
+      - { name: gpu_disk1_free_gb,         offset: 73, length: 2, type: u16, unit: GB }
+      - { name: gpu_disk2_free_gb,         offset: 75, length: 2, type: u16, unit: GB }
+
+      # ─── GPU reserved (W78..W89, rows 54-57) ─────────────────────
+      - { name: gpu_res1,                  offset: 77, length: 2, type: u16, unit: "-" }
+      - { name: gpu_res2,                  offset: 79, length: 2, type: u16, unit: "-" }
+      - { name: gpu_res3,                  offset: 81, length: 4, type: u32, unit: "-" }
+      - { name: gpu_res4,                  offset: 85, length: 4, type: u32, unit: "-" }
+
+      # ─── Algorithm version no's (W90..W92, rows 58-60) ───────────
+      - { name: target_alg_version,        offset: 89, length: 1, type: u8, unit: "-" }
+      - { name: alg1_version,              offset: 90, length: 1, type: u8, unit: "-" }
+      - { name: alg2_version,              offset: 91, length: 1, type: u8, unit: "-" }

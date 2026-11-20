@@ -1,0 +1,200 @@
+unit:
+  id: 0x1A
+  label: "CDPM_P"
+
+cards:
+  CDPM_P_FAST:
+    label: "AI Module Fast TM"
+    unit_id: 0x1A
+    unit_sub_id: 0x10
+    service: 0x66
+    subservice: 0x10
+    subsystem: CDPM_P
+    hw_class: SW
+    fields:
+      # ─── Header (W1..W8, rows 16-19) ─────────────────────────────
+      - { name: utc_time_sec,              offset: 0,  length: 4, type: u32, unit: s }
+      - { name: power_consumption,         offset: 4,  length: 2, type: u16, unit: "0.01 W" }
+      - { name: voltage,                   offset: 6,  length: 2, type: u16, unit: "0.01 V" }
+      - { name: fpga_cpu_temp_c,           offset: 8,  length: 1, type: i8,  unit: "°C" }
+
+      # ─── FPGA System Status bitfield (W10, row 20) ───────────────
+      - name: fpga_system_status
+        offset: 9
+        length: 1
+        type: u8
+        unit: "-"
+        bits:
+          - { name: flash_select,          bit: 7 }
+          - { name: mdata_ok,              bit: 6 }
+          - { name: emmc0_capacity_ok,     bit: 5 }
+          - { name: emmc0_mount_ok,        bit: 4 }
+          - { name: emmc1_capacity_ok,     bit: 3 }
+          - { name: emmc1_mount_ok,        bit: 2 }
+          - { name: gpu_connected,         bit: 1 }
+
+      # ─── Counters (W11..W13, rows 21-23) ─────────────────────────
+      - { name: fast_varying_rx_count,     offset: 10, length: 1, type: u8, unit: cnt }
+      - { name: sat_time_broadcast_rx,     offset: 11, length: 1, type: u8, unit: cnt }
+      - { name: cmd_rx_count,              offset: 12, length: 1, type: u8, unit: cnt }
+
+      # ─── Latest command info (W14..W17, rows 24-27) ──────────────
+      - { name: latest_cmd_code,           offset: 13, length: 1, type: u8, unit: "-" }
+      - { name: latest_done_cmd_code,      offset: 14, length: 1, type: u8, unit: "-" }
+      - name: latest_done_cmd_dev
+        offset: 15
+        length: 1
+        type: u8
+        unit: "-"
+        enum: { 1: interface_module, 2: computing_module }
+      - { name: latest_done_cmd_exit,      offset: 16, length: 1, type: u8, unit: "-" }
+
+      # ─── RS-422 upload interface (W18, row 28) ───────────────────
+      - name: rs422_upload_status
+        offset: 17
+        length: 1
+        type: u8
+        unit: "-"
+        bits:
+          - { name: selected_primary_422,  bit: 7 }
+          - { name: rx_enabled,            bit: 6 }
+          - { name: data_received,         bit: 5 }
+
+      # ─── Upload device info (W19..W36, rows 29-34) ───────────────
+      - name: upload_device_code
+        offset: 18
+        length: 1
+        type: u8
+        unit: "-"
+        enum: { 1: interface_module, 2: computing_module }
+      - { name: upload_file_id,            offset: 19, length: 4, type: u32, unit: "-" }
+      - { name: upload_min_lost_frame_no,  offset: 23, length: 4, type: u32, unit: "-" }
+      - { name: upload_file_rx_frame_cnt,  offset: 27, length: 4, type: u32, unit: cnt }
+      - { name: upload_file_rx_err_cnt,    offset: 31, length: 4, type: u32, unit: cnt }
+      - { name: upload_file_rx_pct,        offset: 35, length: 1, type: u8, unit: "%" }
+
+      # ─── Upload check / OTA status (W37..W48, rows 35-40) ────────
+      - name: upload_file_check
+        offset: 36
+        length: 1
+        type: u8
+        unit: "-"
+        enum:
+          0: not_started
+          1: initializing
+          2: current_frame_ok
+          3: completed_saved
+          4: completed_save_failed
+          5: total_frame_mismatch
+          6: frame_count_mismatch
+          7: bitmap_update_failed
+          8: file_data_update_failed
+          9: duplicate_frame
+      - name: fpga_ota_status
+        offset: 37
+        length: 1
+        type: u8
+        unit: "-"
+      - { name: fpga_reserved_2,           offset: 38, length: 1, type: u8, unit: "-" }
+      - { name: fpga_reserved_3,           offset: 39, length: 4, type: u32, unit: "-" }
+      - { name: fpga_reserved_4,           offset: 43, length: 4, type: u32, unit: "-" }
+
+      # ─── GPU OTA / Status (W48..W50, rows 40-42) ─────────────────
+      - { name: gpu_ota_status,            offset: 47, length: 1, type: u8, unit: "-" }
+      - name: gpu_system_status
+        offset: 48
+        length: 1
+        type: u8
+        unit: "-"
+        bits:
+          - { name: storage1_capacity_ok,  bit: 7 }
+          - { name: storage1_mount_ok,     bit: 6 }
+          - { name: storage2_capacity_ok,  bit: 5 }
+          - { name: storage2_mount_ok,     bit: 4 }
+          - { name: nfs_mount_ok,          bit: 3 }
+      - name: camera_data_if_status
+        offset: 49
+        length: 1
+        type: u8
+        unit: "-"
+        bits:
+          - { name: rx_switch_on,          bit: 7 }
+          - { name: cxp_ch1_synced,        bit: 6 }
+          - { name: cxp_ch2_synced,        bit: 5 }
+          - { name: cxp_ch1_data_rx,       bit: 4 }
+          - { name: cxp_ch2_data_rx,       bit: 3 }
+
+      # ─── Camera CXP data (W51..W67, rows 43-47) ──────────────────
+      - { name: cxp_ch1_data_kb,           offset: 50, length: 4, type: u32, unit: KB }
+      - { name: cxp_ch2_data_kb,           offset: 54, length: 4, type: u32, unit: KB }
+      - { name: cxp_ch1_frame_count,       offset: 58, length: 4, type: u32, unit: cnt }
+      - { name: cxp_ch2_frame_count,       offset: 62, length: 4, type: u32, unit: cnt }
+      - { name: latest_camera_file_seq,    offset: 66, length: 1, type: u8, unit: "-" }
+
+      # ─── Playback status (W68, row 48) ───────────────────────────
+      - name: playback_status
+        offset: 67
+        length: 1
+        type: u8
+        unit: "-"
+        bits:
+          - { name: primary_link_sel,      bit: 7 }
+          - { name: backup_link_sel,       bit: 6 }
+          - { name: hist_packing_lo,       bit: 5 }
+          - { name: hist_packing_hi,       bit: 4 }
+          - { name: playback_lo,           bit: 3 }
+          - { name: playback_hi,           bit: 2 }
+
+      # ─── Playback channel frame counts (W69..W76, rows 49-50) ────
+      - { name: primary_playback_frames,   offset: 68, length: 4, type: u32, unit: cnt }
+      - { name: backup_playback_frames,    offset: 72, length: 4, type: u32, unit: cnt }
+
+      # ─── Algorithm commands (W77..W82, rows 51-56) ───────────────
+      - { name: latest_alg_cmd_code,       offset: 76, length: 1, type: u8, unit: "-" }
+      - { name: latest_done_alg_cmd,       offset: 77, length: 1, type: u8, unit: "-" }
+      - { name: latest_alg_exit_value,     offset: 78, length: 1, type: u8, unit: "-" }
+      - { name: latest_alg_rx_signal,      offset: 79, length: 1, type: u8, unit: "-" }
+      - name: target_alg_run_status
+        offset: 80
+        length: 1
+        type: u8
+        unit: "-"
+        enum:
+          0: not_running
+          1: running
+          2: abnormal_exit
+          3: run_completed
+      - { name: alg_processing_file_no,    offset: 81, length: 1, type: u8, unit: "-" }
+
+      # ─── GPU platform reserved (W83..W94, rows 57-60) ────────────
+      - { name: gpu_platform_res1,         offset: 82, length: 2, type: u16, unit: "-" }
+      - { name: gpu_platform_res2,         offset: 84, length: 2, type: u16, unit: "-" }
+      - { name: gpu_platform_res3,         offset: 86, length: 4, type: u32, unit: "-" }
+      - { name: gpu_platform_res4,         offset: 90, length: 4, type: u32, unit: "-" }
+
+      # ─── Algorithm results (W95..W110, rows 61-67) ───────────────
+      - { name: alg_processed_data_mb,     offset: 94,  length: 4, type: u32, unit: MB }
+      - { name: alg_result_file_size_mb,   offset: 98,  length: 4, type: u32, unit: MB }
+      - { name: alg_arg0,                  offset: 102, length: 1, type: u8, unit: "-" }
+      - { name: alg_arg1,                  offset: 103, length: 1, type: u8, unit: "-" }
+      - { name: total_targets_detected,    offset: 104, length: 2, type: u16, unit: cnt }
+      - { name: total_targets_geolocated,  offset: 106, length: 2, type: u16, unit: cnt }
+      - { name: alg_processing_time,       offset: 108, length: 2, type: u16, unit: "-" }
+
+      # ─── Reserved algorithm 1 (W111..W125, rows 68-74) ───────────
+      - { name: alg1_res1,                 offset: 110, length: 4, type: u32, unit: "-" }
+      - { name: alg1_res2,                 offset: 114, length: 4, type: u32, unit: "-" }
+      - { name: alg1_res3,                 offset: 118, length: 1, type: u8, unit: "-" }
+      - { name: alg1_res4,                 offset: 119, length: 1, type: u8, unit: "-" }
+      - { name: alg1_res5,                 offset: 120, length: 2, type: u16, unit: "-" }
+      - { name: alg1_res6,                 offset: 122, length: 2, type: u16, unit: "-" }
+      - { name: alg1_res7,                 offset: 124, length: 2, type: u16, unit: "-" }
+
+      # ─── Reserved algorithm 2 (W126..W141, rows 75-81) ───────────
+      - { name: alg2_res1,                 offset: 126, length: 4, type: u32, unit: "-" }
+      - { name: alg2_res2,                 offset: 130, length: 4, type: u32, unit: "-" }
+      - { name: alg2_res3,                 offset: 134, length: 1, type: u8, unit: "-" }
+      - { name: alg2_res4,                 offset: 135, length: 1, type: u8, unit: "-" }
+      - { name: alg2_res5,                 offset: 136, length: 2, type: u16, unit: "-" }
+      - { name: alg2_res6,                 offset: 138, length: 2, type: u16, unit: "-" }
+      - { name: alg2_res7,                 offset: 140, length: 2, type: u16, unit: "-" }
