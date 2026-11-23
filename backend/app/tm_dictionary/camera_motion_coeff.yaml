@@ -15,7 +15,7 @@ cards:
     unit_id: 0x1A
     unit_sub_id: 0x10
     service: 0x66
-    subservice: 0x03
+    subservice: 0x04
     subsystem: CAMERA
     hw_class: HW
     fields:
