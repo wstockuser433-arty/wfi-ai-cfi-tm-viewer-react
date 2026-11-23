@@ -23,7 +23,7 @@ TYPES = {
     "i64": (">q", 8), "f32": (">f", 4), "f64": (">d", 8),
 }
 
-MAX_PAYLOAD = 238
+MAX_PAYLOAD = 237
 SEQ_FLAGS = 0x03
 APID = 0xB2
 VERSION = 0x02

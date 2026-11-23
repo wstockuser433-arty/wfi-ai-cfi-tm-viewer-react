@@ -1,10 +1,9 @@
 unit:
-  id: 0x3A
+  id: 0x2A
   label: "CTPU"
   # subsystem: CTPU
   # unit: CTPU_TM
-  # apid: 0x3A
-  # unit_id: 0x3A
+  # unit_id: 0x2A
   # unit_sub_id: 0x01
   # service: 0x03
   # subservice: 0x19
@@ -12,10 +11,12 @@ unit:
 cards:
   CTPU_TM:
     label: "CTPU Telemetry"
-    unit_id: 0x3A
+    unit_id: 0x2A
     unit_sub_id: 0x01
     service: 0x03
     subservice: 0x19
+    subsystem: CTPU
+    hw_class: HW
     fields:
       - name: hw_tm1
         offset: 0
