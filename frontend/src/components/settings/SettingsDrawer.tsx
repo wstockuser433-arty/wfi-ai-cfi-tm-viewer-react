@@ -62,17 +62,17 @@ export function SettingsDrawer({ open, onClose }: Props) {
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — ⭐ was z-40, now z-[9998] */}
       <div
         onClick={onClose}
-        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 z-[9998] bg-black/40 backdrop-blur-sm transition-opacity"
         aria-hidden
       />
 
-      {/* Drawer */}
+      {/* Drawer — ⭐ was z-50, now z-[9999] */}
       <aside
         className={cn(
-          "fixed top-0 right-0 z-50 h-full w-[440px] max-w-[92vw]",
+          "fixed top-0 right-0 z-[9999] h-full w-[440px] max-w-[92vw]",
           "glass-strong border-l border-white/10 shadow-2xl",
           "flex flex-col",
           "animate-[slideIn_.18s_ease-out]"
