@@ -131,10 +131,10 @@ docker compose up -d postgres redis grafana
 main hdr     6
 + sub hdr    1
 + eff hdr    4
-+ payload  238   (when you uncomment the last 6 fields)
++ payload  237  
 + checksum   1
 ─────────────
-         250
+         249
 
 (current one with six ebox yaml file entries commented out)
 payload           = 237 B
@@ -152,6 +152,7 @@ inner w/ checksum = 249 B
 + outer trailer   =   4 B
 ─────────────────────────
 total wire frame  = 257 B
+
 
 
 sudo tee /etc/systemd/system/ebox-pty.service <<'EOF'
@@ -174,6 +175,18 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl enable --now ebox-pty.service
 sudo systemctl status ebox-pty.service
+
+
+(base) hassan@net-5842U-10:~/Documents/Hassan/scc-work/wfi-ai-cfi-tm-viewer-react-oem-packets/backend$ ls /dev/ttyUSB* /dev/ttyACM*
+ls: cannot access '/dev/ttyUSB*': No such file or directory
+ls: cannot access '/dev/ttyACM*': No such file or directory
+(base) hassan@net-5842U-10:~/Documents/Hassan/scc-work/wfi-ai-cfi-tm-viewer-react-oem-packets/backend$ lsusb -t
+/:  Bus 02.Port 1: Dev 1, Class=root_hub, Driver=xhci_hcd/9p, 20000M/x2
+/:  Bus 01.Port 1: Dev 1, Class=root_hub, Driver=xhci_hcd/16p, 480M
+    |__ Port 7: Dev 2, If 0, Class=Human Interface Device, Driver=usbhid, 1.5M
+    |__ Port 7: Dev 2, If 1, Class=Human Interface Device, Driver=usbhid, 1.5M
+    |__ Port 8: Dev 3, If 0, Class=Human Interface Device, Driver=usbhid, 1.5M
+
 
 
 grep -rniE "(ICD|interface[[:space:]]+control[[:space:]]+document|§[[:space:]]*[0-9]|table[[:space:]]+[0-9]+|section[[:space:]]+[0-9]+)" \
