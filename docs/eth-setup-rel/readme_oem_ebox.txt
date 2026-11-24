@@ -153,7 +153,33 @@ inner w/ checksum = 249 B
 ─────────────────────────
 total wire frame  = 257 B
 
+=========================
+TM sizes in bytes (not including checksum, chksum=1B)
+=========================
+Padding = zero padding to 237 else 0xFF where mentioned
 
+Camera Rapid Status = 131
+Camera Slow Status = 144
+Camera Motion Calc = 69
+Camera Motion Coeff = 118
+Camera Terrain Elev = 230
+Camera Uplink Result 1 = 230
+Camera Uplink Result 2 = 231
+Camera Time Sync = 5
+Camera GNC Broadcast = 102
+
+CDPM_P AI Module Fast = 141
+CDPM_P AI Module Slow = 92
+
+CTPU TM = 237
+
+CDPM_R AI Object = 237
+CDPM_R DCDS Report = 45 then padded with 0xFF to 237
+CDPM_R OTA Missing = 237 
+CDPM_R Health TM = 108 then padded with 0xFF to 237
+
+CDPM_R FPGA TM1 = 237
+CDPM_R FPGA TM2 = 237 
 
 sudo tee /etc/systemd/system/ebox-pty.service <<'EOF'
 [Unit]
