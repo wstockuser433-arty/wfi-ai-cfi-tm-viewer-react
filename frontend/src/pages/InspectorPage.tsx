@@ -41,7 +41,7 @@ export function InspectorPage() {
 
         const mapped: DecodedPacket[] = (data.packets ?? []).map((r: any) => ({
           ...r,
-          timestamp: new Date(r.ts).getTime() / 1000,
+          timestamp: Math.round(new Date(r.ts).getTime()) / 1000,
           apid_name: r.card ?? "",
           subsystem: r.subsystem ?? "",
           card: r.card ?? "",

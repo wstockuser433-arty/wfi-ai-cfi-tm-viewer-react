@@ -32,6 +32,9 @@ export interface DecodedPacket {
 }
 
 // ⭐ Helper to generate a stable ID for a packet
-export function packetId(p: DecodedPacket): string {
-  return `${p.timestamp}-${p.apid}-${p.seq}`;
+export function packetId(p: { timestamp: number; apid: number; seq: number }): string {
+  // ⭐ Round to 3 decimal places (milliseconds) so WS floats (1795452749.84521) 
+  // and DB ISO strings (1795452749.845) produce the exact same ID.
+  const tsMs = Math.round(p.timestamp * 1000) / 1000;
+  return `${tsMs}-${p.apid}-${p.seq}`;
 }

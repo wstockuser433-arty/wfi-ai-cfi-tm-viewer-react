@@ -137,9 +137,13 @@ function SinglePacketView({ packet }: { packet: DecodedPacket }) {
       <Section title="PRIMARY HEADER">
         <Row label="Version / Type" value={`${packet.cc >> 5} / TM`} />
         <Row label="Secondary header" value={packet.sub_hdr_label?.includes("TM") ? "yes" : "no"} />
-        <Row
+        {/* <Row
           label="APID"
           value={`0x${packet.apid.toString(16).toUpperCase().padStart(3, "0")} (${packet.card})`}
+        /> */}
+        <Row
+          label="APID"
+          value={`0x${packet.apid.toString(16).toUpperCase().padStart(2, "0")} (${packet.card})`}
         />
         <Row label="Sequence flags" value="3 (unsegmented)" />
         <Row label="Sequence count" value={packet.seq.toString()} />
@@ -147,11 +151,19 @@ function SinglePacketView({ packet }: { packet: DecodedPacket }) {
       </Section>
 
       <Section title="SECONDARY HEADER">
-        <Row label="Sub-header" value={packet.sub_hdr_label ?? "—"} />
-        <Row label="Service Type" value={`0x${(packet.service_type ?? 0).toString(16).toUpperCase()}`} />
-        <Row label="Sub-Service" value={`0x${(packet.service_subtype ?? 0).toString(16).toUpperCase()}`} />
-        <Row label="Unit ID" value={`0x${(packet.unit_id ?? 0).toString(16).toUpperCase()}`} />
-        <Row label="Unit Sub ID" value={`0x${(packet.unit_sub_id ?? 0).toString(16).toUpperCase()}`} />
+        {/* <Row label="Sub-header" value={ packet.sub_hdr_label ?? "—"} /> */}
+        <Row
+          label="Sub-header"
+          value={
+            packet.sub_hdr_value != null
+              ? `${packet.sub_hdr_label ?? "—"} (0x${packet.sub_hdr_value.toString(16).toUpperCase().padStart(2, "0")})`
+              : (packet.sub_hdr_label ?? "—")
+          }
+        />
+        <Row label="Unit ID" value={`0x${(packet.unit_id ?? 0).toString(16).toUpperCase().padStart(2, "0")}`} />
+        <Row label="Unit Sub ID" value={`0x${(packet.unit_sub_id ?? 0).toString(16).toUpperCase().padStart(2, "0")}`} />
+        <Row label="Service Type" value={`0x${(packet.service_type ?? 0).toString(16).toUpperCase().padStart(2, "0")}`} />
+        <Row label="Sub-Service" value={`0x${(packet.service_subtype ?? 0).toString(16).toUpperCase().padStart(2, "0")}`} />
         <Row label="RX time (UTC)" value={new Date(packet.timestamp * 1000).toISOString()} />
       </Section>
 
