@@ -31,7 +31,7 @@ interface UiState {
 
 export const useUiStore = create<UiState>((set) => ({
   mode: "live",
-  activePage: "dashboard",
+  activePage: "packets-live",
   setMode: (mode) => set({ mode }),
   setPage: (activePage) => set({ activePage }),
   logsOpen: false,

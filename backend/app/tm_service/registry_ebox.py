@@ -11,7 +11,7 @@ for the 4-tuple is the `unit_sub_id` / `service` / `subservice` fields
 inside the card definitions themselves.
 
 Unlike the standard TmRegistry (which is keyed by APID), the EBOX
-protocol multiplexes all telemetry through a single APID (0x2B) and
+protocol multiplexes all telemetry through a single APID (0xB2) and
 discriminates by the 4-tuple.
 """
 

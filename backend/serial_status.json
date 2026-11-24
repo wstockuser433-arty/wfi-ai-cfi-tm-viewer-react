@@ -2,6 +2,6 @@
   "baudrate": 115200,
   "last_error": null,
   "last_error_at": null,
-  "port": "/tmp/ttyV1",
+  "port": "/dev/ttyUSB0",
   "status": "open"
 }
