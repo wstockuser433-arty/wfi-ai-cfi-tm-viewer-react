@@ -13,13 +13,10 @@ interface Props {
     service?: number;
     subservice?: number;
   } | null;
-  overridePackets?: DecodedPacket[]; // ⭐ NEW
+  overridePackets?: DecodedPacket[]; // ⭐ Now the ONLY source of data
 }
 
 export function PacketListTable({ filter, overridePackets }: Props) {
-  // ⭐ Use overridePackets if provided, otherwise fall back to store
-  const storePackets = useTelemetry((s) => s.packets);
-  const packets = overridePackets ?? storePackets;
   const selectedId = useTelemetry((s) => s.selectedPacketId);
   const setSelectedId = useTelemetry((s) => s.setSelectedPacketId);
   const bookmarks = useTelemetry((s) => s.bookmarks);
@@ -36,6 +33,7 @@ export function PacketListTable({ filter, overridePackets }: Props) {
   } | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const packets = overridePackets ?? []; // ⭐ Default to empty array, NEVER the live store
 
   useEffect(() => {
     const handleClick = () => setContextMenu(null);
@@ -43,40 +41,38 @@ export function PacketListTable({ filter, overridePackets }: Props) {
     return () => window.removeEventListener("click", handleClick);
   }, []);
 
-  // ⭐ Reset pagination when the filter changes (e.g., switching subservices)
+  // Reset page to 1 whenever the data changes
   useEffect(() => {
     setPage(0);
-  }, [filter]);
+  }, [packets, search, filter]);
 
   const filteredPackets = useMemo(() => {
-    let sorted = [...packets].reverse();
+    // ⭐ Sort newest first
+    let sorted = [...packets].sort((a, b) => b.timestamp - a.timestamp);
 
-    // ⭐ Apply the subservice filter from the sidebar
-    if (filter && !overridePackets) {
-    sorted = sorted.filter((p) =>
-      (filter.unit_id === undefined || p.unit_id === filter.unit_id) &&
-      (filter.unit_sub_id === undefined || p.unit_sub_id === filter.unit_sub_id) &&
-      (filter.service === undefined || p.service_type === filter.service) &&
-      (filter.subservice === undefined || p.service_subtype === filter.subservice)
-    );
-  }
+    // Apply the subservice filter from the sidebar
+    if (filter) {
+      sorted = sorted.filter((p) =>
+        (filter.unit_id === undefined || p.unit_id === filter.unit_id) &&
+        (filter.unit_sub_id === undefined || p.unit_sub_id === filter.unit_sub_id) &&
+        (filter.service === undefined || p.service_type === filter.service) &&
+        (filter.subservice === undefined || p.service_subtype === filter.subservice)
+      );
+    }
 
     // Apply the search text filter
-        if (search) {
+    if (search) {
       const q = search.toLowerCase();
       sorted = sorted.filter(
         (p) =>
-          p.subsystem.toLowerCase().includes(q) ||
-          p.card.toLowerCase().includes(q) ||
-          // Service/subservice as hex, e.g. "0x68/0x01"
-          (p.service_type !== undefined &&
-            `0x${p.service_type.toString(16)}`.toLowerCase().includes(q)) ||
-          (p.service_subtype !== undefined &&
-            `0x${p.service_subtype.toString(16)}`.toLowerCase().includes(q))
+          (p.subsystem || "").toLowerCase().includes(q) ||
+          (p.card || "").toLowerCase().includes(q) ||
+          (p.service_type !== undefined && `0x${p.service_type.toString(16)}`.toLowerCase().includes(q)) ||
+          (p.service_subtype !== undefined && `0x${p.service_subtype.toString(16)}`.toLowerCase().includes(q))
       );
     }
     return sorted;
-  }, [packets, search, filter, overridePackets]);
+  }, [packets, search, filter]);
 
   const totalPages = Math.ceil(filteredPackets.length / pageSize) || 1;
   const currentBatch = filteredPackets.slice(
@@ -102,18 +98,16 @@ export function PacketListTable({ filter, overridePackets }: Props) {
   if (packets.length === 0) {
     return (
       <Card className="h-full flex items-center justify-center text-sm text-muted">
-        Waiting for packets…
+        Waiting for uploaded packets…
       </Card>
     );
   }
 
   return (
     <Card className="h-full flex flex-col relative" ref={containerRef}>
-      {/* ⭐ Adjust top bar layout for more search space */}
       <div className="flex items-center justify-between mb-3 shrink-0 gap-2">
         <h3 className="text-sm font-semibold whitespace-nowrap">Recent</h3>
 
-        {/* Search bar gets flex-1 and a bigger width */}
         <div className="flex-1 min-w-[150px] relative">
           <input
             type="text"
@@ -167,7 +161,7 @@ export function PacketListTable({ filter, overridePackets }: Props) {
             <tr>
               <th className="px-2 py-2 font-medium w-6"></th>
               <th className="px-3 py-2 font-medium">Time</th>
-              <th className="px-3 py-2 font-medium">Unit ID</th>
+              <th className="px-3 py-2 font-medium whitespace-nowrap">Unit ID</th>
               <th className="px-3 py-2 font-medium">Svc/Sub</th>
               <th className="px-3 py-2 font-medium">Card</th>
               <th className="px-3 py-2 font-medium text-right">CRC</th>
@@ -211,7 +205,7 @@ export function PacketListTable({ filter, overridePackets }: Props) {
                   </td>
                   <td className="px-3 py-1.5 mono text-primary whitespace-nowrap">
                     {p.service_type !== undefined && p.service_type !== null
-                      ? `0x${p.service_type.toString(16).toUpperCase()}/0x${(p.service_subtype ?? 0).toString(16).toUpperCase()}`
+                      ? `0x${p.service_type.toString(16).toUpperCase().padStart(2, "0")}/0x${(p.service_subtype ?? 0).toString(16).toUpperCase().padStart(2, "0")}`
                       : "—"}
                   </td>
                   <td className="px-3 py-1.5 whitespace-nowrap text-slate-200">

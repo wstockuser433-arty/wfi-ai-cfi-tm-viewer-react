@@ -9,8 +9,8 @@ export type LinkState = "connected" | "connecting" | "disconnected";
 
 export interface Alarm {
   id: string;
-  db_id?: number;        // ⭐ for DB-sourced alarms
-  packet_id?: number;    // ⭐ link to the packet that triggered it
+  db_id?: number;        // for DB-sourced alarms
+  packet_id?: number;    // link to the packet that triggered it
   ts: number;
   severity: "WARN" | "CRIT";
   subsystem: string;
@@ -90,6 +90,7 @@ export const useTelemetry = create<TelemetryState>()(
           const j = await res.json();
           const rows = (j.packets ?? []).map((r: any) => ({
             ...r,
+            // ⭐ Round to milliseconds to match WS timestamp format
             timestamp: Math.round(new Date(r.ts).getTime()) / 1000,
             apid_name: r.card ?? "",
             subsystem: r.subsystem ?? "",
@@ -107,10 +108,10 @@ export const useTelemetry = create<TelemetryState>()(
             const existingIds = new Set(state.packets.map(packetId));
             const fresh = asc.filter((p) => !existingIds.has(packetId(p)));
             const combined = [...state.packets, ...fresh].slice(-MAX_PACKETS);
-            return { packets: combined, isHydrating: false };
+            return { packets: combined, isHydrating: false, hasHydrated: true };
           });
         } catch {
-          useTelemetry.setState({ isHydrating: false });
+          useTelemetry.setState({ isHydrating: false, hasHydrated: true });
         }
       },
 
@@ -143,7 +144,16 @@ export const useTelemetry = create<TelemetryState>()(
           const newAlarms: Alarm[] = [];
           const seenKeys = new Set<string>();
 
-          for (const p of batch) {
+          // ⭐ Deduplicate against existing packets in the store
+          const existingIds = new Set(state.packets.map(packetId));
+          const dedupedBatch = batch.filter((p) => {
+            const id = packetId(p);
+            if (existingIds.has(id)) return false;
+            existingIds.add(id);
+            return true;
+          });
+
+          for (const p of dedupedBatch) {
             latest[p.apid] = p;
             for (const [name, f] of Object.entries(p.fields ?? {})) {
               latestParam[`${p.apid}:${name}`] = p;
@@ -169,17 +179,17 @@ export const useTelemetry = create<TelemetryState>()(
           }
 
           let nextSelected = state.selectedPacketId;
-          if (!nextSelected && batch.length > 0) {
-            nextSelected = packetId(batch[batch.length - 1]);
+          if (!nextSelected && dedupedBatch.length > 0) {
+            nextSelected = packetId(dedupedBatch[dedupedBatch.length - 1]);
           }
 
           return {
-            packets: [...state.packets, ...batch].slice(-MAX_PACKETS),
+            packets: [...state.packets, ...dedupedBatch].slice(-MAX_PACKETS),
             latestByApid: latest,
             latestByParam: latestParam,
             alarms: [...state.alarms, ...newAlarms].slice(-MAX_ALARMS),
             lastPacketAt: Date.now(),
-            totalReceived: isLive ? state.totalReceived + batch.length : state.totalReceived,
+            totalReceived: isLive ? state.totalReceived + dedupedBatch.length : state.totalReceived,
             selectedPacketId: nextSelected,
           };
         }),
@@ -191,15 +201,24 @@ export const useTelemetry = create<TelemetryState>()(
           const latest = { ...state.latestByApid };
           const latestParam = { ...state.latestByParam };
 
-          for (const p of batch) {
+          // ⭐ Deduplicate against existing packets
+          const existingIds = new Set(state.packets.map(packetId));
+          const newPackets = batch.filter((p) => {
+            const id = packetId(p);
+            if (existingIds.has(id)) return false;
+            existingIds.add(id);
+            return true;
+          });
+
+          if (newPackets.length === 0) return state; // Nothing new to add
+
+          for (const p of newPackets) {
             latest[p.apid] = p;
             for (const [name] of Object.entries(p.fields ?? {})) {
               latestParam[`${p.apid}:${name}`] = p;
             }
           }
 
-          const existingIds = new Set(state.packets.map(packetId));
-          const newPackets = batch.filter((p) => !existingIds.has(packetId(p)));
           const combined = [...state.packets, ...newPackets].slice(-MAX_PACKETS);
 
           return {

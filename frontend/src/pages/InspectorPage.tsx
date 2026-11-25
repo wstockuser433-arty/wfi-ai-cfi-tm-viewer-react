@@ -10,16 +10,16 @@ import type { DecodedPacket } from "@/types/packet";
 import { packetId } from "@/types/packet";
 
 export function InspectorPage() {
-  const packets = useTelemetry((s) => s.packets);
   const addPackets = useTelemetry((s) => s.addPackets);
-  const selectedId = useTelemetry((s) => s.selectedPacketId);
+  const setSelectedPacketId = useTelemetry((s) => s.setSelectedPacketId);
   const packetFilter = useUiStore((s) => s.packetFilter);
   const setPacketFilter = useUiStore((s) => s.setPacketFilter);
 
   const [dbPackets, setDbPackets] = useState<DecodedPacket[] | null>(null);
+  const [offlinePackets, setOfflinePackets] = useState<DecodedPacket[]>([]);
   const hasFetchedForFilter = useRef<string | null>(null);
 
-  // ─── 1. Fetch list from DB when filter changes ───
+  // Fetch list from DB when filter changes
   useEffect(() => {
     if (!packetFilter || !packetFilter.subsystem) {
       hasFetchedForFilter.current = null;
@@ -27,25 +27,18 @@ export function InspectorPage() {
       return;
     }
 
-    // ⭐ Include the card in the filter key so we refetch when a specific card is clicked
     const filterKey = `${packetFilter.subsystem}-${packetFilter.unit_id}-${packetFilter.unit_sub_id}-${packetFilter.card || 'all'}`;
     if (hasFetchedForFilter.current === filterKey) return;
 
     async function fetchHistory() {
       try {
         hasFetchedForFilter.current = filterKey;
-        
-        // ⭐ Build URL params dynamically
         const params = new URLSearchParams({
           subsystems: packetFilter!.subsystem!,
           limit: "500",
           order: "desc"
         });
-        
-        // ⭐ Append card filter if it exists
-        if (packetFilter!.card) {
-          params.set("card", packetFilter!.card);
-        }
+        if (packetFilter!.card) params.set("card", packetFilter!.card);
 
         const res = await fetch(`${API_BASE}/api/history?${params.toString()}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -76,40 +69,17 @@ export function InspectorPage() {
     fetchHistory();
   }, [packetFilter, addPackets]);
 
-  // ─── 2. Fetch full packet details when a DB row is selected ───
-  const lastFetchedId = useRef<string | null>(null);
-  useEffect(() => {
-    if (!selectedId) return;
-    
-    // Find the currently selected packet in the store
-    const current = packets.find((p) => packetId(p) === selectedId);
-    if (!current) return;
-
-    // If it's a DB packet (has integer id) and fields are empty, fetch full data
-    const isDbPacket = current.id !== undefined && Number.isInteger(current.id);
-    const missingFields = !current.fields || Object.keys(current.fields).length === 0;
-    const missingPayload = !current.payload_hex || current.payload_hex.length === 0;
-
-    if (isDbPacket && (missingFields || missingPayload)) {
-      const fetchKey = String(current.id);
-      if (lastFetchedId.current === fetchKey) return; // Prevent loop
-      lastFetchedId.current = fetchKey;
-
-      console.log(`Fetching full packet details for DB ID ${current.id}...`);
-      fetch(`${API_BASE}/api/packets/${current.id}`)
-        .then((r) => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.json();
-        })
-        .then((fullPacket: DecodedPacket) => {
-          // Inject the fully decoded packet into the store
-          addPackets([fullPacket]);
-        })
-        .catch((e) => {
-          console.error("Failed to fetch full packet details", e);
-        });
+  // Handle JSON Upload
+  const handleUpload = (pkts: DecodedPacket[]) => {
+    setOfflinePackets(pkts);
+    if (pkts.length > 0) {
+      const newest = [...pkts].sort((a, b) => b.timestamp - a.timestamp)[0];
+      setSelectedPacketId(packetId(newest));
     }
-  }, [selectedId, packets, addPackets]);
+  };
+
+  // ⭐ Determine the exact array passed to the table
+  const dataForTable = packetFilter ? (dbPackets || []) : offlinePackets;
 
   return (
     <div className="flex flex-col h-full space-y-4">
@@ -118,8 +88,8 @@ export function InspectorPage() {
           <h2 className="text-sm font-semibold">Packet Inspector</h2>
           <p className="text-xs text-muted">
             {packetFilter 
-              ? `Filtered: ${packetFilter.subsystem || "Unknown"}${packetFilter.card ? ` / ${packetFilter.card}` : ""}${dbPackets ? " (from DB)" : ""}` 
-              : "Click a packet to inspect. Right-click to filter."}
+              ? `Filtered: ${packetFilter.subsystem || "Unknown"}${packetFilter.card ? ` / ${packetFilter.card}` : ""} (from DB)` 
+              : "Offline Viewer — Upload a JSON dump."}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -135,15 +105,15 @@ export function InspectorPage() {
               Clear Filter
             </button>
           )}
-          <UploadDumpButton />
+          <UploadDumpButton onUpload={handleUpload} />
         </div>
       </Card>
 
       <div className="grid grid-cols-[480px_1fr] gap-4 flex-1 min-h-0">
         <Card className="flex flex-col min-h-0 p-0 overflow-hidden">
           <PacketListTable
-            filter={dbPackets ? null : packetFilter}
-            overridePackets={dbPackets ?? undefined}
+            filter={packetFilter}
+            overridePackets={dataForTable} // ⭐ Pass the resolved array
           />
         </Card>
         <Card className="flex-1 min-h-0 overflow-auto">
