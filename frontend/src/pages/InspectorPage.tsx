@@ -6,11 +6,13 @@ import { PacketDetailsPanel } from "@/components/inspector/PacketDetailsPanel";
 import { useTelemetry } from "@/store/telemetryStore";
 import { useUiStore } from "@/store/uiStore";
 import { API_BASE } from "@/lib/api";
+import { loadOfflineDump } from "@/lib/offlineStore";
 import type { DecodedPacket } from "@/types/packet";
 import { packetId } from "@/types/packet";
 
 export function InspectorPage() {
   const addPackets = useTelemetry((s) => s.addPackets);
+  const ingest = useTelemetry((s) => s.ingest);
   const setSelectedPacketId = useTelemetry((s) => s.setSelectedPacketId);
   const packetFilter = useUiStore((s) => s.packetFilter);
   const setPacketFilter = useUiStore((s) => s.setPacketFilter);
@@ -18,6 +20,31 @@ export function InspectorPage() {
   const [dbPackets, setDbPackets] = useState<DecodedPacket[] | null>(null);
   const [offlinePackets, setOfflinePackets] = useState<DecodedPacket[]>([]);
   const hasFetchedForFilter = useRef<string | null>(null);
+
+  // Load the saved offline dump from the backend on mount
+  // (page refresh, navigating back to Inspector, opening from another browser).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const saved = await loadOfflineDump();
+      if (cancelled || saved.length === 0) return;
+
+      // Don't clobber a dump the user uploaded while this request was in flight
+      setOfflinePackets((prev) => (prev.length > 0 ? prev : saved));
+
+      // Same as an upload: put them in the global store so the Details Panel can read them
+      ingest(saved, false);
+
+      if (!useTelemetry.getState().selectedPacketId) {
+        const newest = [...saved].sort((a, b) => b.timestamp - a.timestamp)[0];
+        setSelectedPacketId(packetId(newest));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fetch list from DB when filter changes
   useEffect(() => {
