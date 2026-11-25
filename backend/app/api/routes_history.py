@@ -15,6 +15,7 @@ async def history(
     end: datetime | None = None,
     subsystem: str | None = None,
     subsystems: str | None = None,
+    card: str | None = None,
     apid: int | None = None,
     limit: int = Query(500, le=50000),
     offset: int = Query(0, ge=0),
@@ -32,6 +33,8 @@ async def history(
         names = [s for s in (x.strip() for x in subsystems.split(",")) if s]
         if names:
             conds.append(PacketRow.subsystem.in_(names))
+    if card:
+        conds.append(PacketRow.card == card) # Added condition for card filtering
     if apid is not None:
         conds.append(PacketRow.apid == apid)
 

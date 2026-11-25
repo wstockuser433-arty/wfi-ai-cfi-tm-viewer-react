@@ -16,6 +16,7 @@ export interface PacketFilter {
   service?: number;
   subservice?: number;
   subsystem?: string; // ⭐ Added to help Inspector query history
+  card?: string; // ⭐ Added to help Inspector query history
 }
 
 interface UiState {

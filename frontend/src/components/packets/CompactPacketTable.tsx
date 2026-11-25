@@ -112,7 +112,7 @@ export function CompactPacketTable({
                   <td className="mono py-1.5 px-3">{p.seq ?? "—"}</td>
                   <td className="mono py-1.5 px-3 whitespace-nowrap">
                     {p.service_type != null
-                      ? `0x${p.service_type.toString(16).toUpperCase()}/0x${(p.service_subtype ?? 0).toString(16).toUpperCase()}`
+                      ? `0x${p.service_type.toString(16).toUpperCase().padStart(2, "0")}/0x${(p.service_subtype ?? 0).toString(16).toUpperCase().padStart(2, "0")}`
                       : "—"}
                   </td>
                   <td className="py-1.5 px-3 text-slate-200">{p.card}</td>

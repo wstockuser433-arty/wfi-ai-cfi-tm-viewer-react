@@ -27,15 +27,27 @@ export function InspectorPage() {
       return;
     }
 
-    const filterKey = `${packetFilter.subsystem}-${packetFilter.unit_id}-${packetFilter.unit_sub_id}`;
+    // ⭐ Include the card in the filter key so we refetch when a specific card is clicked
+    const filterKey = `${packetFilter.subsystem}-${packetFilter.unit_id}-${packetFilter.unit_sub_id}-${packetFilter.card || 'all'}`;
     if (hasFetchedForFilter.current === filterKey) return;
 
     async function fetchHistory() {
       try {
         hasFetchedForFilter.current = filterKey;
-        const res = await fetch(
-          `${API_BASE}/api/history?subsystems=${packetFilter!.subsystem}&limit=500&order=desc`
-        );
+        
+        // ⭐ Build URL params dynamically
+        const params = new URLSearchParams({
+          subsystems: packetFilter!.subsystem!,
+          limit: "500",
+          order: "desc"
+        });
+        
+        // ⭐ Append card filter if it exists
+        if (packetFilter!.card) {
+          params.set("card", packetFilter!.card);
+        }
+
+        const res = await fetch(`${API_BASE}/api/history?${params.toString()}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
@@ -106,7 +118,7 @@ export function InspectorPage() {
           <h2 className="text-sm font-semibold">Packet Inspector</h2>
           <p className="text-xs text-muted">
             {packetFilter 
-              ? `Filtered: ${packetFilter.subsystem || "Unknown"}${dbPackets ? " (from DB)" : ""}` 
+              ? `Filtered: ${packetFilter.subsystem || "Unknown"}${packetFilter.card ? ` / ${packetFilter.card}` : ""}${dbPackets ? " (from DB)" : ""}` 
               : "Click a packet to inspect. Right-click to filter."}
           </p>
         </div>

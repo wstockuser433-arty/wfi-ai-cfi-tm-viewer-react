@@ -212,8 +212,9 @@ export function Sidebar() {
                                     service: card.service,
                                     subservice: card.subservice,
                                     subsystem: key, // ⭐ Pass the subsystem key (e.g., "CAMERA")
+                                    card: cardKey, // ⭐ Use cardKey (e.g., "CAMERA_MOTION_CALC"), NOT card.label
                                   });
-                                  setPage("inspector");
+                                  setPage("storage"); // Navigate to the Storage page
                                 }}
                             className="w-full flex items-center px-2 py-1 rounded text-[11px] text-left hover:bg-white/5 transition-colors group"
                           >
