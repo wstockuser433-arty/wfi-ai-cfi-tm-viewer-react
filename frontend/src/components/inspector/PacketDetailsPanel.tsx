@@ -63,12 +63,10 @@ export function PacketDetailsPanel({ overridePacket, overrideBase }: Props) {
     URL.revokeObjectURL(url);
   };
 
-    // In PacketDetailsPanel.tsx
   const handleSaveClick = () => {
     const pid = packetId(selected);
     toggleBookmark(pid);
     
-    // ⭐ Force the main window to re-read localStorage if this is a standalone window
     if (window.opener) {
       window.opener.dispatchEvent(new Event("storage"));
     }
@@ -141,17 +139,12 @@ function SinglePacketView({ packet }: { packet: DecodedPacket }) {
         <Row
           label="Subsystem / Card"
           value={`${packet.subsystem} / ${packet.card}`} />
-        {/* <Row
-          label="Unit Sub ID"
-          value={`0x${(packet.unit_sub_id ?? 0).toString(16).toUpperCase().padStart(2, "0")} (${packet.card})`}
-        /> */}
         <Row label="Sequence flags" value="3 (unsegmented)" />
         <Row label="Sequence count" value={packet.seq.toString()} />
         <Row label="Data length field" value={packet.length.toString()} />
       </Section>
 
       <Section title="SECONDARY HEADER">
-        {/* <Row label="Sub-header" value={ packet.sub_hdr_label ?? "—"} /> */}
         <Row
           label="Sub-header"
           value={
@@ -175,25 +168,48 @@ function SinglePacketView({ packet }: { packet: DecodedPacket }) {
 
       <Section title="DECODED FIELDS">
         <div className="space-y-1.5">
-          {Object.entries(packet.fields).map(([name, f]) => (
-            <div key={name} className="flex items-center justify-between text-xs py-1 border-b border-white/5">
-              <span className="mono text-muted truncate mr-2">{name}</span>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="mono text-slate-100">
-                  {f.value === null || f.value === undefined
-                    ? "—"
-                    : f.enum && f.enum[String(f.value)]
-                    ? `${f.value} (${f.enum[String(f.value)]})`
-                    : `${f.value}${f.unit && f.unit !== "-" ? ` ${f.unit}` : ""}`}
-                </span>
-                <Badge
-                  variant={f.status === "OK" ? "ok" : f.status === "WARN" ? "warn" : "crit"}
-                >
-                  {f.status}
-                </Badge>
+          {Object.entries(packet.fields).map(([name, f]) => {
+            // ⭐ Detect bytes field by checking if value is a long hex string
+            const isBytes =
+              typeof f.value === "string" &&
+              f.value.length > 40 &&
+              /^[0-9a-fA-F]+$/.test(f.value);
+
+            if (isBytes && typeof f.value === "string") {
+              const hexValue = f.value;
+              return (
+                <div key={name} className="text-xs py-1 border-b border-white/5">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="mono text-muted">{name}</span>
+                    <Badge variant="ok">{hexValue.length / 2} bytes</Badge>
+                  </div>
+                  <div className="mono text-[10px] text-slate-300 break-all bg-space-950/40 rounded p-1.5 leading-tight">
+                    {hexValue}
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div key={name} className="flex items-center justify-between text-xs py-1 border-b border-white/5">
+                <span className="mono text-muted truncate mr-2">{name}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="mono text-slate-100">
+                    {f.value === null || f.value === undefined
+                      ? "—"
+                      : f.enum && f.enum[String(f.value)]
+                      ? `${f.value} (${f.enum[String(f.value)]})`
+                      : `${f.value}${f.unit && f.unit !== "-" ? ` ${f.unit}` : ""}`}
+                  </span>
+                  <Badge
+                    variant={f.status === "OK" ? "ok" : f.status === "WARN" ? "warn" : "crit"}
+                  >
+                    {f.status}
+                  </Badge>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Section>
 
@@ -240,11 +256,11 @@ function DiffView({ base, compare }: { base: DecodedPacket; compare: DecodedPack
             )}
           >
             <div className="mono text-muted truncate">{key}</div>
-            <div className={cn("mono text-center", isDifferent ? "text-accent" : "text-slate-300")}>
-              {v1 === undefined ? "—" : v1}
+            <div className={cn("mono text-center truncate", isDifferent ? "text-accent" : "text-slate-300")}>
+              {v1 === undefined ? "—" : String(v1).slice(0, 20)}
             </div>
-            <div className={cn("mono text-center", isDifferent ? "text-accent font-bold" : "text-slate-300")}>
-              {v2 === undefined ? "—" : v2}
+            <div className={cn("mono text-center truncate", isDifferent ? "text-accent font-bold" : "text-slate-300")}>
+              {v2 === undefined ? "—" : String(v2).slice(0, 20)}
             </div>
           </div>
         );

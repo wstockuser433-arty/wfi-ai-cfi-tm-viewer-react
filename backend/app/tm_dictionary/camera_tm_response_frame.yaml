@@ -1,0 +1,84 @@
+unit:
+  id: 0x1A
+  label: "CAMERA"
+
+# ============================================================
+# Camera Telemetry Data Response Frame
+# Source: camera-status-TM-query-response-format.docx
+# Main Control Unit -> Platform
+# Service: 0x68 (ACK response)
+# ============================================================
+# Frame layout (byte offsets are zero-based):
+#   Header             0..3
+#   Packet identifier  4..5
+#   Sequence control   6..7
+#   Packet length      8..9
+#   Sub-header         10
+#   Unit ID            11
+#   Unit sub-ID        12
+#   Service type       13
+#   Sub-service type   14
+#   Telemetry payload  15..(variable)
+#   Checksum           immediately after payload
+#   Frame trailer      final 4 bytes
+#
+# Packet length is the total length of sub-header data and valid
+# data, excluding the checksum. The payload size is variable.
+# Sequence control: [15:14] sequence flag (01 first, 00
+# intermediate, 10 last, 11 standalone); [13:0] sequence count.
+# Checksum is the lower 8 bits of the checksum over the packet,
+# excluding the frame header and frame trailer. The ICD table
+# labels checksum length as variable (X), although its description
+# identifies the lower 8 bits; represented here as one byte.
+# ============================================================
+
+cards:
+  CAMERA_TM_RESPONSE_FRAME:
+    label: "Camera Telemetry Response Frame"
+    unit_id: 0x1A
+    unit_sub_id: 0x10
+    service: 0x68
+    subservice: "*"
+    subsystem: CAMERA
+    hw_class: SW
+    tm_only: true
+
+    fields:
+      # # Frame header: fixed sequence 23 23 2A 2A
+      # - { name: frame_header_1, offset: 0, length: 1, type: u8, unit: "-" } # 0x23
+      # - { name: frame_header_2, offset: 1, length: 1, type: u8, unit: "-" } # 0x23
+      # - { name: frame_header_3, offset: 2, length: 1, type: u8, unit: "-" } # 0x2A
+      # - { name: frame_header_4, offset: 3, length: 1, type: u8, unit: "-" } # 0x2A
+
+      # Packet identifier: fixed value 0x482B
+      - { name: packet_identifier, offset: 4, length: 2, type: u16, unit: "-" }
+
+      # [15:14] sequence flag; [13:0] packet sequence count.
+      - { name: packet_sequence_control, offset: 6, length: 2, type: u16, unit: "-" }
+
+      # Total sub-header data + valid data; excludes checksum.
+      - { name: packet_length, offset: 8, length: 2, type: u16, unit: "bytes" }
+
+      - { name: sub_header, offset: 10, length: 1, type: u8, unit: "-" } # Fixed: 0x01
+      - { name: unit_id, offset: 11, length: 1, type: u8, unit: "-" } # Fixed: 0x1A
+      - { name: unit_sub_id, offset: 12, length: 1, type: u8, unit: "-" } # Fixed: 0x10
+      - { name: service_type, offset: 13, length: 1, type: u8, unit: "-" } # Fixed: 0x68
+
+      # Response sub-service identifier. Corresponds to the
+      # sub-service requested by the platform; payload format and
+      # size depend on this identifier.
+      - { name: sub_service_type, offset: 14, length: 1, type: u8, unit: "-" }
+
+      # Variable-length telemetry data. Its internal fields are
+      # defined by the corresponding telemetry payload ICD.
+      - { name: telemetry_payload, offset: 15, length: 0, type: bytes, unit: "bytes" } # Variable length; length=0 denotes variable/unspecified
+
+      # One-byte lower-8-bit checksum, located after payload.
+      # Dynamic offset = 15 + telemetry_payload_length.
+      # - { name: checksum, offset: -1, length: 1, type: u8, unit: "-" } # Dynamic position: immediately after payload
+
+      # # Fixed frame trailer: 2A 2A 23 23; located at final 4 bytes.
+      # - { name: frame_trailer_1, offset: -4, length: 1, type: u8, unit: "-" } # 0x2A
+      # - { name: frame_trailer_2, offset: -3, length: 1, type: u8, unit: "-" } # 0x2A
+      # - { name: frame_trailer_3, offset: -2, length: 1, type: u8, unit: "-" } # 0x23
+      # - { name: frame_trailer_4, offset: -1, length: 1, type: u8, unit: "-" } # 0x23

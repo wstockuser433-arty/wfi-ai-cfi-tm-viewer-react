@@ -61,6 +61,7 @@ TYPE_SIZE = {
     "u8": 1, "u16": 2, "u24": 3, "u32": 4, "u64": 8,
     "i8": 1, "i16": 2, "i32": 4, "i64": 8,
     "s8": 1, "s16": 2, "s32": 4, "s64": 8,
+    "bytes": 0,  # variable-length; size is determined by the field's `length` attribute
 }
 
 class EboxDecoder(PacketDecoder):
@@ -217,12 +218,26 @@ class EboxDecoder(PacketDecoder):
             typ = f["type"]
             size = TYPE_SIZE[typ]
 
+            # ⭐ Handle bytes field: read rest of payload
+            if typ == "bytes":
+                raw_bytes = payload[off:]
+                val = raw_bytes.hex()  # store as hex string
+                out[name] = {
+                    "value": val,
+                    "unit": f.get("unit", ""),
+                    "limits": [None, None],
+                    "status": "OK",
+                    "enum": None,
+                }
+                continue  # skip normal processing
+
             if off + size > len(payload):
                 continue
 
             val = EboxDecoder._read_value(payload, off, typ)
             if typ in ("f32", "f64"):
                 val = round(val, 4)
+            
 
             raw_values[name] = val
             status = EboxDecoder._status(val, f)

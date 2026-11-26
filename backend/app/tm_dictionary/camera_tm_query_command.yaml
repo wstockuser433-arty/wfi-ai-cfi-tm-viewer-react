@@ -1,0 +1,77 @@
+unit:
+  id: 0x1A
+  label: "CAMERA"
+
+# ============================================================
+# Camera Telemetry Data Query Command
+# Source: camera-status-TM-query-response-format.docx
+# Platform -> Main Control Unit
+# Service: 0x64 (Telemetry command)
+# ============================================================
+# Frame layout (byte offsets are zero-based):
+#   Header             0..3
+#   Packet identifier  4..5
+#   Sequence control   6..7
+#   Packet length      8..9
+#   Sub-header         10
+#   Unit ID            11
+#   Unit sub-ID        12
+#   Service type       13
+#   Sub-service type   14
+#   SUM checksum       15
+#   Frame trailer      16..19
+#
+# Packet length is fixed at 0x0005: sub-header + unit ID +
+# unit sub-ID + service type + sub-service type. It excludes
+# the checksum, frame header, and frame trailer.
+# Checksum: lower 8 bits of the checksum over the packet,
+# excluding the frame header and frame trailer.
+# ============================================================
+
+cards:
+  CAMERA_TM_QUERY_COMMAND:
+    label: "Camera Telemetry Query Command"
+    unit_id: 0x1A
+    unit_sub_id: 0x10
+    service: 0x64    
+    subservice: "*"
+    subsystem: CAMERA
+    hw_class: SW
+    tm_only: false
+    
+    fields:
+      # # Frame header: fixed sequence 23 23 2A 2A
+      # - { name: frame_header_1, offset: 0, length: 1, type: u8, unit: "-" } # 0x23
+      # - { name: frame_header_2, offset: 1, length: 1, type: u8, unit: "-" } # 0x23
+      # - { name: frame_header_3, offset: 2, length: 1, type: u8, unit: "-" } # 0x2A
+      # - { name: frame_header_4, offset: 3, length: 1, type: u8, unit: "-" } # 0x2A
+
+      # Packet identifier: fixed value 0x4B2B
+      - { name: packet_identifier, offset: 4, length: 2, type: u16, unit: "-" }
+
+      # [15:14] sequence flag; [13:0] packet sequence count.
+      # Query command example: 0xC000 (standalone, sequence count 0).
+      - { name: packet_sequence_control, offset: 6, length: 2, type: u16, unit: "-" }
+
+      # Fixed value 0x0005; excludes checksum and frame header/trailer.
+      - { name: packet_length, offset: 8, length: 2, type: u16, unit: "bytes" }
+
+      - { name: sub_header, offset: 10, length: 1, type: u8, unit: "-" } # Fixed: 0x01
+      - { name: unit_id, offset: 11, length: 1, type: u8, unit: "-" } # Fixed: 0x1A
+      - { name: unit_sub_id, offset: 12, length: 1, type: u8, unit: "-" } # Fixed: 0x10
+      - { name: service_type, offset: 13, length: 1, type: u8, unit: "-" } # Fixed: 0x64
+
+      # 0x01 Rapid status; 0x02 Slow status; 0x03 Image motion
+      # calculation result; 0x04 Image motion coefficient;
+      # 0x05 Terrain elevation readback; 0x06 Uplink result 1;
+      # 0x07 Uplink result 2. Other values are invalid.
+      - { name: sub_service_type, offset: 14, length: 1, type: u8, unit: "-" }
+
+      # Sum checksum: lower 8 bits of the sum over the packet,
+      # excluding the frame header and frame trailer.
+      # - { name: sum_checksum, offset: 15, length: 1, type: u8, unit: "-" }
+      # # Fixed frame trailer: 2A 2A 23 23
+      # - { name: frame_trailer_1, offset: 16, length: 1, type: u8, unit: "-" } # 0x2A
+      # - { name: frame_trailer_2, offset: 17, length: 1, type: u8, unit: "-" } # 0x2A
+      # - { name: frame_trailer_3, offset: 18, length: 1, type: u8, unit: "-" } # 0x23
+      # - { name: frame_trailer_4, offset: 19, length: 1, type: u8, unit: "-" } # 0x23

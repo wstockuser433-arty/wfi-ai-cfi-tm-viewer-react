@@ -31,12 +31,14 @@ DICT_DIR = Path(__file__).parent.parent / "tm_dictionary"
 
 VALID_TYPES = {"f32", "f64", "u8", "u16", "u24", "u32", "u64",
                "i8", "i16", "i32", "i64",
-               "s8", "s16", "s32", "s64"}
+               "s8", "s16", "s32", "s64",
+               "bytes"}
 STRUCT_SIZE = {
     "f32": 4, "f64": 8,
     "u8": 1, "u16": 2, "u24": 3, "u32": 4, "u64": 8,
     "i8": 1, "i16": 2, "i32": 4, "i64": 8,
      "s8": 1, "s16": 2, "s32": 4, "s64": 8,
+    "bytes": 0,  # variable-length; size is determined by the field's `length` attribute
 }
 
 # Calc expressions are validated against this whitelist. Anything not
@@ -85,9 +87,6 @@ class EboxRegistry:
 
         log.info("Loading %d TM dictionary file(s) from %s", len(yaml_files), DICT_DIR)
 
-        # Remember the first non-empty `unit:` block — it becomes the
-        # top-level `unit` in `meta()`. Subsystem-specific unit labels
-        # are stored per-card.
         first_unit_block: dict[str, Any] | None = None
 
         for path in yaml_files:
@@ -117,10 +116,6 @@ class EboxRegistry:
 
         self.unit = first_unit_block or {"id": 0x1A, "label": "EBOX"}
 
-        # Guard against duplicated card keys across files. Card keys are
-        # unique in YAML by definition, but two files could both define
-        # `CAMERA_UNIT_STATUS`. That would silently merge or overwrite —
-        # raise so the developer notices.
         self._validate()
         log.info(
             "EBOX registry loaded: %d cards, %d unique 4-tuples, %d subsystems",
@@ -140,7 +135,6 @@ class EboxRegistry:
         if not isinstance(card, dict):
             raise ValueError(f"{file_name}: card '{card_key}' must be a mapping")
 
-        # Card-level unit_id wins; fall back to file-level `unit.id`
         if "unit_id" not in card:
             if "id" not in file_unit:
                 raise ValueError(
@@ -153,17 +147,10 @@ class EboxRegistry:
             if req not in card:
                 raise ValueError(f"{file_name}: card '{card_key}' missing '{req}'")
 
-        quad = (
-            int(card["unit_id"]),
-            int(card["unit_sub_id"]),
-            int(card["service"]),
-            int(card["subservice"]),
-        )
-        if quad in self.quad_map:
-            raise ValueError(
-                f"{file_name}: duplicate 4-tuple {quad} "
-                f"({card_key} vs {self.quad_map[quad]['card']})"
-            )
+        # ⭐ Wildcard subservice: skip quad_map registration but keep the
+        #    card in self.cards so it still appears in /api/meta and the sidebar.
+        subservice_raw = card["subservice"]
+        is_wildcard = isinstance(subservice_raw, str) and subservice_raw.strip() == "*"
 
         if card_key in self.cards:
             raise ValueError(
@@ -179,6 +166,26 @@ class EboxRegistry:
             "hw_class": card.get("hw_class", "HW"),
             "file": file_name,
         }
+
+        if is_wildcard:
+            # Wildcard TC/response cards: documented in the registry but
+            # never matched by a runtime packet lookup.
+            self.cards[card_key] = entry
+            log.info(f"  {file_name}: registered '{card_key}' as wildcard (no 4-tuple)")
+            return
+
+        quad = (
+            int(card["unit_id"]),
+            int(card["unit_sub_id"]),
+            int(card["service"]),
+            int(card["subservice"]),
+        )
+        if quad in self.quad_map:
+            raise ValueError(
+                f"{file_name}: duplicate 4-tuple {quad} "
+                f"({card_key} vs {self.quad_map[quad]['card']})"
+            )
+
         self.cards[card_key] = entry
         self.quad_map[quad] = entry
 
@@ -215,7 +222,6 @@ class EboxRegistry:
         if typ not in VALID_TYPES:
             raise ValueError(f"{card_key}.{f['name']}: bad type '{typ}'")
 
-        # ── calc fields: derived views, share bytes with parent ─────────
         from .inspector.ebox_calcs import CALC_FUNCS
         if "calc" in f:
             calc = str(f["calc"]).strip()
@@ -228,9 +234,8 @@ class EboxRegistry:
                 raise ValueError(
                     f"{card_key}.{f['name']}: 'calc' requires 'calc_from'"
                 )
-            return  # derived — skip overlap check
+            return
 
-        # ── physical field: register its span ──────────────────────────
         start = int(f["offset"])
         end = start + STRUCT_SIZE[typ]
         for (s, e, other) in seen:
@@ -240,7 +245,6 @@ class EboxRegistry:
                 )
         seen.append((start, end, f["name"]))
 
-        # ── bitfields ───────────────────────────────────────────────────
         if "bits" in f:
             if typ not in ("u8", "u16", "u32", "u24"):
                 raise ValueError(
@@ -272,38 +276,9 @@ class EboxRegistry:
 
     # ------------------------------------------------------------------ #
     def meta(self) -> dict[str, Any]:
-        """
-        Frontend /api/meta payload.
-
-        Shape:
-            {
-              "unit": { "id": int, "label": str },
-              "subsystems": {
-                "<SUBSYSTEM>": {
-                  "label": str,
-                  "color": str,
-                  "cards": {
-                    "<card_key>": {
-                      "label": str,
-                      "apid": int,
-                      "hw_class": str,
-                      "fields": [...],
-                      "unit_id": int,
-                      "unit_sub_id": int,
-                      "service": int,
-                      "subservice": int,
-                    }
-                  }
-                }
-              },
-              "links": [],
-              "apids": [...],
-            }
-        """
         subsystems: dict[str, dict[str, Any]] = {}
         apids: list[dict[str, Any]] = []
 
-        # ⭐ 1. Pre-seed the required subsystems so they always show up
         for req in ["CAMERA", "EBOX", "CTPU", "CDPM_P", "CDPM_R"]:
             subsystems[req] = {
                 "label": SUBSYSTEM_LABELS.get(req, req),
@@ -311,10 +286,8 @@ class EboxRegistry:
                 "cards": {},
             }
 
-        # 2. Populate with actual cards
         for card_key, card in self.cards.items():
             sub_key = card["subsystem"]
-            # In case a YAML defines a subsystem not in our list, add it
             sub = subsystems.setdefault(sub_key, {
                 "label": SUBSYSTEM_LABELS.get(sub_key, sub_key),
                 "color": SUBSYSTEM_COLORS.get(sub_key, "#8B95A9"),
@@ -322,6 +295,15 @@ class EboxRegistry:
             })
 
             apid_key = int(card["unit_sub_id"])
+
+            # ⭐ For wildcard cards, pass through "*" (string) unchanged
+            #    so the frontend can distinguish them from real subservices.
+            subservice_out = card["subservice"]
+            if isinstance(subservice_out, str):
+                # preserve "*" as-is
+                pass
+            else:
+                subservice_out = int(subservice_out)
 
             sub["cards"][card_key] = {
                 "label": card["card_label"],
@@ -331,7 +313,7 @@ class EboxRegistry:
                 "unit_id": int(card["unit_id"]),
                 "unit_sub_id": int(card["unit_sub_id"]),
                 "service": int(card["service"]),
-                "subservice": int(card["subservice"]),
+                "subservice": subservice_out,
             }
 
             apids.append({
@@ -342,7 +324,7 @@ class EboxRegistry:
                 "unit_id": int(card["unit_id"]),
                 "unit_sub_id": int(card["unit_sub_id"]),
                 "service": int(card["service"]),
-                "subservice": int(card["subservice"]),
+                "subservice": subservice_out,
             })
 
         return {

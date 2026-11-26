@@ -123,12 +123,12 @@ export function StatusBar() {
             >
               <ScrollText className="w-4 h-4 text-tertiary" />
             </button>
-            <button
+            {/* <button
               className="p-1.5 hover-surface rounded"
               aria-label="Search"
             >
               <Search className="w-4 h-4 text-tertiary" />
-            </button>
+            </button> */}
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
@@ -137,12 +137,12 @@ export function StatusBar() {
             >
               <Settings className="w-4 h-4 text-tertiary" />
             </button>
-            <button
+            {/* <button
               className="p-1.5 hover-surface rounded"
               aria-label="User"
             >
               <User className="w-4 h-4 text-tertiary" />
-            </button>
+            </button> */}
           </div>
         </div>
       </header>

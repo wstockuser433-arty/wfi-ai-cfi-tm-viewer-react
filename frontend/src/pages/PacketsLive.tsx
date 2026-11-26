@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { List } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import {
   CompactPacketTable,
   type PacketLike,
@@ -12,7 +14,7 @@ export default function PacketsLive() {
   const hasHydrated = useTelemetry((s) => s.hasHydrated);
   const hydrate = useTelemetry((s) => s.hydrateFromHistory);
 
-  const [selected, setSelected] = useState<string[]>([]); // subsystem names
+  const [selected, setSelected] = useState<string[]>([]);
 
   useEffect(() => {
     if (!hasHydrated) hydrate();
@@ -24,26 +26,36 @@ export default function PacketsLive() {
   }, [packets, selected]);
 
   function openInspect(p: PacketLike) {
-    // Use the same composite key format as bookmarks: ts-apid-seq
-    // so StandalonePacketView can resolve via /api/packets/by-key
     const id = p.id != null
-      ? String(p.id)                                       // DB packets → integer id
-      : `${p.timestamp ?? 0}-${p.apid}-${p.seq ?? 0}`;     // Live packets → composite key
+      ? String(p.id)
+      : `${p.timestamp ?? 0}-${p.apid}-${p.seq ?? 0}`;
     window.open(`/standalone/packet/${id}`, "_blank", "width=1200,height=900");
   }
 
   return (
-    <div className="p-4 space-y-3">
-      <div className="flex items-center gap-3">
-        <SubsystemFilter selected={selected} onChange={setSelected} />
-        <span className="text-xs text-muted">{filtered.length} packets</span>
-      </div>
-      <CompactPacketTable
-        packets={filtered as unknown as PacketLike[]}
-        loading={isHydrating}
-        onInspect={openInspect}
-        emptyMessage="No live packets"
-      />
+    <div className="space-y-4">
+      {/* ⭐ Heading card */}
+      <Card className="py-3 px-4 flex items-center gap-2">
+        <List className="w-4 h-4 text-accent-cyan" />
+        <h3 className="text-sm font-semibold">Live Packets</h3>
+        <span className="text-xs text-muted ml-2">
+          {filtered.length} packets in memory
+        </span>
+      </Card>
+
+      {/* Table card */}
+      <Card className="p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <SubsystemFilter selected={selected} onChange={setSelected} />
+          <span className="text-xs text-muted">{filtered.length} packets</span>
+        </div>
+        <CompactPacketTable
+          packets={filtered as unknown as PacketLike[]}
+          loading={isHydrating}
+          onInspect={openInspect}
+          emptyMessage="No live packets"
+        />
+      </Card>
     </div>
   );
 }

@@ -22,6 +22,11 @@ python3 replay_tm_frames.py tm_frames_1.txt -p /tmp/ttyV0 --interval 0.2
 -Delete everything on Postgres
 docker exec -it tm-postgres psql -U tm -d tmdb -c "TRUNCATE TABLE packets, parameters RESTART IDENTITY CASCADE;
 
+api/meta endpoint for sidebar
+http://localhost:8000/api/meta
+
+if only CAMERA subsystems list is required (use terminal)
+curl -s http://localhost:8000/api/meta | jq '.subsystems.CAMERA.cards | keys'
 
 Send everything
 
