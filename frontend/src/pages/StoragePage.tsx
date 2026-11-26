@@ -1,13 +1,21 @@
-// Inside StoragePage.tsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { API_BASE } from "@/lib/api";
 import { Download, Database, RefreshCw, Loader2, HardDriveDownload, X } from "lucide-react";
 import { useStorageStore } from "@/store/storageStore";
 import { useUiStore } from "@/store/uiStore";
 import { CompactPacketTable, type PacketLike } from "@/components/packets/CompactPacketTable";
 import { SubsystemFilter } from "@/components/packets/SubsystemFilter";
+
+interface PacketSummary {
+  id: number;
+  ts: string;
+  apid: number;
+  subsystem: string;
+  card: string;
+  crc_ok: boolean;
+  raw_hex?: string;
+}
 
 export function StoragePage() {
   const {
@@ -18,10 +26,10 @@ export function StoragePage() {
   const packetFilter = useUiStore((s) => s.packetFilter);
   const setPacketFilter = useUiStore((s) => s.setPacketFilter);
 
-  // Local state for the SubsystemFilter UI
   const [selectedSubsystems, setSelectedSubsystems] = useState<string[]>([]);
+  const [exportingCsv, setExportingCsv] = useState(false);
+  const [exportingJson, setExportingJson] = useState(false);
 
-  // Sync local UI state with global filter on mount/change
   useEffect(() => {
     if (packetFilter?.subsystem) {
       setSelectedSubsystems([packetFilter.subsystem]);
@@ -66,9 +74,16 @@ export function StoragePage() {
     }
   }, [start, end, selectedSubsystems, packetFilter?.card, setBusy, setPackets, setMsg]);
 
+  const queryKey = `${start}|${end}|${selectedSubsystems.join(",")}|${packetFilter?.card ?? ""}`;
+  const prevQueryKey = useRef<string>("");
+
   useEffect(() => {
-    runQuery();
-  }, [runQuery]);
+    if (prevQueryKey.current !== queryKey) {
+      prevQueryKey.current = queryKey;
+      runQuery();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryKey]);
 
   const handleSubsystemChange = (subs: string[]) => {
     setSelectedSubsystems(subs);
@@ -76,6 +91,87 @@ export function StoragePage() {
       setPacketFilter(null);
     }
   };
+
+  async function exportCsv() {
+    setExportingCsv(true);
+    setMsg("Preparing CSV...");
+    try {
+      const params = new URLSearchParams({
+        start: new Date(start).toISOString(),
+        end: new Date(end).toISOString(),
+        limit: "50000",
+      });
+      if (selectedSubsystems.length > 0) params.set("subsystems", selectedSubsystems.join(","));
+      if (packetFilter?.card) params.set("card", packetFilter.card);
+
+      const r = await fetch(`${API_BASE}/api/history?${params.toString()}`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const j = await r.json();
+      
+      const pkts = j.packets ?? [];
+      if (pkts.length === 0) {
+        setMsg("No packets to export.");
+        return;
+      }
+
+      const rows = [
+        ["ts", "apid", "subsystem", "card", "crc_ok"],
+        ...pkts.map((p: PacketSummary) => [
+          p.ts, p.apid, p.subsystem, p.card, p.crc_ok,
+        ]),
+      ];
+      const csv = rows.map((r: any) => r.join(",")).join("\n");
+      downloadBlob(csv, `tm-export-${Date.now()}.csv`, "text/csv");
+      setMsg(`Exported ${pkts.length} packets to .csv`);
+    } catch (e) {
+      setMsg(`export failed: ${e}`);
+    } finally {
+      setExportingCsv(false);
+    }
+  }
+
+  async function downloadBin() {
+    setExportingJson(true);
+    setMsg("Preparing export...");
+    try {
+      const params = new URLSearchParams({
+        start: new Date(start).toISOString(),
+        end: new Date(end).toISOString(),
+        limit: "50000",
+      });
+      if (selectedSubsystems.length > 0) params.set("subsystems", selectedSubsystems.join(","));
+      if (packetFilter?.card) params.set("card", packetFilter.card);
+
+      const r = await fetch(`${API_BASE}/api/history?${params.toString()}`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const j = await r.json();
+      
+      const pkts = j.packets ?? [];
+      if (pkts.length === 0) {
+        setMsg("No packets to export.");
+        return;
+      }
+
+      const exportData = pkts.map((p: PacketSummary) => ({
+        ts: new Date(p.ts).getTime() / 1000,
+        raw_hex: p.raw_hex
+      }));
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `tm-capture-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      setMsg(`Downloaded ${pkts.length} packets to .json`);
+    } catch (e) {
+      setMsg(`export failed: ${e}`);
+    } finally {
+      setExportingJson(false);
+    }
+  }
 
   function openStandalone(packetId: number) {
     window.open(`/standalone/packet/${packetId}`, "_blank", "width=1200,height=900");
@@ -89,7 +185,6 @@ export function StoragePage() {
           <h3 className="text-sm font-semibold">TM Storage Explorer</h3>
         </div>
 
-        {/* Filter Row */}
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <SubsystemFilter
             selected={selectedSubsystems}
@@ -105,7 +200,6 @@ export function StoragePage() {
             </button>
           )}
 
-          {/* ⭐ Display the specific card filter pill */}
           {packetFilter?.card && (
             <div className="flex items-center gap-1.5 px-2 py-1 bg-accent/10 border border-accent/20 rounded-md text-xs text-accent">
               <span>Card: {packetFilter.card}</span>
@@ -139,11 +233,38 @@ export function StoragePage() {
               className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 mono text-xs"
             />
           </div>
-          <Button onClick={runQuery} disabled={busy} className="flex items-center gap-1.5">
+          
+          {/* ⭐ Unified styling — all three buttons now match */}
+          <button
+            onClick={runQuery}
+            disabled={busy}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-md bg-accent/10 hover:bg-accent/20 text-accent border border-accent/20 transition-colors disabled:opacity-50"
+          >
             {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
             Query
-          </Button>
-          {/* CSV / Export buttons remain the same */}
+          </button>
+          
+          <button
+            onClick={exportCsv}
+            disabled={exportingCsv}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-md bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition-colors disabled:opacity-50"
+          >
+            {exportingCsv ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+            CSV
+          </button>
+          
+          <button
+            onClick={downloadBin}
+            disabled={exportingJson}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-md bg-accent/10 hover:bg-accent/20 text-accent border border-accent/20 transition-colors disabled:opacity-50"
+          >
+            {exportingJson ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <HardDriveDownload className="w-3.5 h-3.5" />
+            )}
+            Export .json
+          </button>
         </div>
 
         {msg && <div className="mono text-xs text-muted mt-3">{msg}</div>}
@@ -172,4 +293,14 @@ export function StoragePage() {
       )}
     </div>
   );
+}
+
+function downloadBlob(content: string, name: string, type: string) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = name;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
 }

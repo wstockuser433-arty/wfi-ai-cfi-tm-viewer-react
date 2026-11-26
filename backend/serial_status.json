@@ -1,7 +1,7 @@
 {
   "baudrate": 115200,
   "last_error": "[Errno 2] could not open port /dev/ttyUSB0: [Errno 2] No such file or directory: '/dev/ttyUSB0'",
-  "last_error_at": 1795671134.090896,
+  "last_error_at": 1795671704.4839623,
   "port": "/dev/ttyUSB0",
   "status": "error"
 }
