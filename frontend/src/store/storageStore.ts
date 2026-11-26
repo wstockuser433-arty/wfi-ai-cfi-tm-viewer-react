@@ -1,47 +1,43 @@
 import { create } from "zustand";
 
-export interface PacketSummary {
-  id: number;
-  ts: string;
-  apid: number;
-  subsystem: string;
-  card: string;
-  crc_ok: boolean;
-  raw_hex?: string;
-}
-
 interface StorageState {
   start: string;
   end: string;
   busy: boolean;
-  packets: PacketSummary[];
+  packets: any[];
   msg: string;
   totalInWindow: number;
-
+  lastQueryKey: string; // ⭐ NEW: remembers the last successful query
   setStart: (s: string) => void;
-  setEnd: (e: string) => void;
+  setEnd: (s: string) => void;
   setBusy: (b: boolean) => void;
-  setPackets: (p: PacketSummary[], total: number) => void;
+  setPackets: (p: any[], total: number) => void;
   setMsg: (m: string) => void;
+  setLastQueryKey: (k: string) => void; // ⭐ NEW
 }
 
-// Helper to generate the default date strings
-function toLocalInput(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
+export const useStorageStore = create<StorageState>((set) => {
+  // Default time range: last 24 hours
+  const now = new Date();
+  const yesterday = new Date(now.getTime() - 24 * 3600 * 1000);
+  const toLocalInput = (d: Date) => {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
 
-export const useStorageStore = create<StorageState>((set) => ({
-  start: toLocalInput(new Date(Date.now() - 3600_000)),
-  end: toLocalInput(new Date()),
-  busy: false,
-  packets: [],
-  msg: "",
-  totalInWindow: 0,
-
-  setStart: (start) => set({ start }),
-  setEnd: (end) => set({ end }),
-  setBusy: (busy) => set({ busy }),
-  setPackets: (packets, totalInWindow) => set({ packets, totalInWindow }),
-  setMsg: (msg) => set({ msg }),
-}));
+  return {
+    start: toLocalInput(yesterday),
+    end: toLocalInput(now),
+    busy: false,
+    packets: [],
+    msg: "",
+    totalInWindow: 0,
+    lastQueryKey: "", // ⭐ NEW
+    setStart: (start) => set({ start }),
+    setEnd: (end) => set({ end }),
+    setBusy: (busy) => set({ busy }),
+    setPackets: (packets, totalInWindow) => set({ packets, totalInWindow }),
+    setMsg: (msg) => set({ msg }),
+    setLastQueryKey: (lastQueryKey) => set({ lastQueryKey }), // ⭐ NEW
+  };
+});

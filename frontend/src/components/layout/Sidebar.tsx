@@ -44,12 +44,12 @@ export function Sidebar() {
   };
 
   const nav: NavItem[] = [
-  { id: "dashboard",    label: "Live",         icon: Radio },
   { id: "packets-live", label: "Packets Live", icon: ListTree }, // NEW
-  { id: "trends",       label: "Trends",       icon: TrendingUp },
   { id: "storage",      label: "Storage",      icon: Database },
   { id: "alarms",       label: "Alarms",       icon: Bell },
   { id: "inspector",    label: "Inspector",    icon: Settings2 },
+  { id: "dashboard",    label: "Live",         icon: Radio },
+  { id: "trends",       label: "Trends",       icon: TrendingUp },
 ];
 
   const savedPackets = bookmarks

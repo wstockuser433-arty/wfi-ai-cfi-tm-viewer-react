@@ -38,9 +38,9 @@ export default function PacketsLive() {
       <Card className="py-3 px-4 flex items-center gap-2">
         <List className="w-4 h-4 text-accent-cyan" />
         <h3 className="text-sm font-semibold">Live Packets</h3>
-        <span className="text-xs text-muted ml-2">
+        {/* <span className="text-xs text-muted ml-2">
           {filtered.length} packets in memory
-        </span>
+        </span> */}
       </Card>
 
       {/* Table card */}

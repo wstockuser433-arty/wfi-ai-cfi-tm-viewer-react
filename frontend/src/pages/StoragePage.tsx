@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { API_BASE } from "@/lib/api";
 import { Download, Database, RefreshCw, Loader2, HardDriveDownload, X } from "lucide-react";
@@ -20,7 +20,8 @@ interface PacketSummary {
 export function StoragePage() {
   const {
     start, end, busy, packets, msg, totalInWindow,
-    setStart, setEnd, setBusy, setPackets, setMsg
+    setStart, setEnd, setBusy, setPackets, setMsg,
+    lastQueryKey, setLastQueryKey,   // ⭐ Read from store
   } = useStorageStore();
 
   const packetFilter = useUiStore((s) => s.packetFilter);
@@ -38,7 +39,8 @@ export function StoragePage() {
     }
   }, [packetFilter]);
 
-  const runQuery = useCallback(async () => {
+  const runQuery = useCallback(async (currentKey?: string) => {
+    const key = currentKey ?? `${start}|${end}|${selectedSubsystems.join(",")}|${packetFilter?.card ?? ""}`;
     setBusy(true);
     setMsg("");
     try {
@@ -61,6 +63,7 @@ export function StoragePage() {
       const j = await r.json();
       
       setPackets(j.packets ?? [], j.count ?? 0);
+      setLastQueryKey(key);   // ⭐ Store the key on success
       
       let msgText = `${j.count} packets in window`;
       if (packetFilter?.card) msgText += ` (Card: ${packetFilter.card})`;
@@ -72,15 +75,14 @@ export function StoragePage() {
     } finally {
       setBusy(false);
     }
-  }, [start, end, selectedSubsystems, packetFilter?.card, setBusy, setPackets, setMsg]);
+  }, [start, end, selectedSubsystems, packetFilter?.card, setBusy, setPackets, setMsg, setLastQueryKey]);
 
+  // ⭐ Only run the query if the current inputs differ from the last successful query
   const queryKey = `${start}|${end}|${selectedSubsystems.join(",")}|${packetFilter?.card ?? ""}`;
-  const prevQueryKey = useRef<string>("");
-
+  
   useEffect(() => {
-    if (prevQueryKey.current !== queryKey) {
-      prevQueryKey.current = queryKey;
-      runQuery();
+    if (queryKey !== lastQueryKey) {
+      runQuery(queryKey);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryKey]);
@@ -234,9 +236,8 @@ export function StoragePage() {
             />
           </div>
           
-          {/* ⭐ Unified styling — all three buttons now match */}
           <button
-            onClick={runQuery}
+            onClick={() => runQuery()}
             disabled={busy}
             className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-md bg-accent/10 hover:bg-accent/20 text-accent border border-accent/20 transition-colors disabled:opacity-50"
           >
@@ -299,7 +300,7 @@ function downloadBlob(content: string, name: string, type: string) {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = name;
+  a.href = url;
   a.download = name;
   a.click();
   URL.revokeObjectURL(url);
